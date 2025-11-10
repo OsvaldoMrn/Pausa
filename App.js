@@ -1,43 +1,282 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
-
-// 1. Importamos tu archivo de colores
-// (Asegúrate de que la ruta './src/constants/Colors.js' sea correcta)
+// App.js
+import React, { useState, useEffect } from 'react';
+import {
+  StatusBar,
+  StyleSheet,
+  Text,
+  View,
+  TextInput,
+  Button,
+  FlatList,
+  TouchableOpacity,
+  Alert,
+  Keyboard,
+  TouchableWithoutFeedback,
+} from 'react-native';
 import { Colors } from './src/constants/Colors';
 
+// --- Importamos funciones de la BD ---
+import {
+  initDatabase,
+  addEntry,
+  getAllEntries,
+  deleteEntry,
+} from './src/db/database.js';
+
 export default function App() {
+  // Estado del formulario
+  const [emotion, setEmotion] = useState('');
+  const [intensity, setIntensity] = useState('');
+  const [note, setNote] = useState('');
+  const [entries, setEntries] = useState([]);
+
+  // Inicializamos la BD y cargamos datos
+  useEffect(() => {
+    initDatabase();
+    loadEntries();
+  }, []);
+
+  // Cargar todas las entradas
+  const loadEntries = () => {
+    const data = getAllEntries();
+    setEntries(data);
+  };
+
+  // Añadir nueva entrada
+  const handleAddEntry = () => {
+    if (!emotion.trim()) {
+      Alert.alert('Error', 'La emoción es obligatoria');
+      return;
+    }
+
+    const intensityNum = intensity ? parseInt(intensity, 10) : null;
+    if (intensity && (isNaN(intensityNum) || intensityNum < 1 || intensityNum > 10)) {
+      Alert.alert('Error', 'Intensidad debe ser entre 1 y 10');
+      return;
+    }
+
+    const date = Date.now();
+    const newId = addEntry(emotion.trim(), intensityNum, note.trim(), date);
+
+    if (newId) {
+      // Limpiar formulario
+      setEmotion('');
+      setIntensity('');
+      setNote('');
+      Keyboard.dismiss();
+
+      // Recargar lista
+      loadEntries();
+    }
+  };
+
+  // Borrar entrada
+  const handleDeleteEntry = (id) => {
+    Alert.alert(
+      'Borrar entrada',
+      '¿Estás seguro de que quieres borrar esta entrada?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Borrar',
+          style: 'destructive',
+          onPress: () => {
+            deleteEntry(id);
+            loadEntries();
+          },
+        },
+      ]
+    );
+  };
+
+  // Renderizar cada entrada
+  const renderEntry = ({ item }) => {
+    const date = new Date(item.date).toLocaleString();
+    return (
+      <View style={styles.entryCard}>
+        <View style={styles.entryHeader}>
+          <Text style={styles.entryEmotion}>{item.emotion}</Text>
+          <Text style={styles.entryIntensity}>
+            {item.intensity ? `Intensidad: ${item.intensity}/10` : 'Sin intensidad'}
+          </Text>
+        </View>
+
+        {item.note ? <Text style={styles.entryNote}>{item.note}</Text> : null}
+
+        <View style={styles.entryFooter}>
+          <Text style={styles.entryDate}>{date}</Text>
+          <TouchableOpacity
+            style={styles.deleteButton}
+            onPress={() => handleDeleteEntry(item.id)}
+          >
+            <Text style={styles.deleteButtonText}>Borrar</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
+
   return (
-    // 2. Usamos los colores en los estilos
-    <View style={styles.container}>
-      <Text style={styles.title}>¡Proyecto Pausa!</Text>
-      <Text style={styles.subtitle}>Configuración inicial lista.</Text>
-      <StatusBar style="auto" />
-    </View>
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <View style={styles.container}>
+        <StatusBar style="auto" />
+
+        <Text style={styles.title}>¡Proyecto Pausa!</Text>
+
+        {/* Formulario */}
+        <View style={styles.form}>
+          <TextInput
+            style={styles.input}
+            placeholder="¿Cómo te sientes? (ej: feliz, ansioso)"
+            placeholderTextColor="#999"
+            value={emotion}
+            onChangeText={setEmotion}
+          />
+
+          <TextInput
+            style={styles.input}
+            placeholder="Intensidad (1-10, opcional)"
+            placeholderTextColor="#999"
+            value={intensity}
+            onChangeText={setIntensity}
+            keyboardType="numeric"
+          />
+
+          <TextInput
+            style={[styles.input, styles.textArea]}
+            placeholder="Nota adicional (opcional)"
+            placeholderTextColor="#999"
+            value={note}
+            onChangeText={setNote}
+            multiline
+            numberOfLines={3}
+          />
+
+          <Button title="Guardar Entrada" onPress={handleAddEntry} color={Colors.primary} />
+        </View>
+
+        {/* Lista de entradas */}
+        <Text style={styles.sectionTitle}>Tus entradas</Text>
+
+        {entries.length === 0 ? (
+          <Text style={styles.emptyText}>No hay entradas aún. ¡Empieza a registrar!</Text>
+        ) : (
+          <FlatList
+            data={entries}
+            keyExtractor={(item) => item.id.toString()}
+            renderItem={renderEntry}
+            style={styles.list}
+            showsVerticalScrollIndicator={false}
+          />
+        )}
+      </View>
+    </TouchableWithoutFeedback>
   );
 }
 
-// 3. Creamos los estilos usando tu archivo
+// --- Estilos ---
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    // Usamos el color de fondo secundario
     backgroundColor: Colors.backgroundSecondary,
-    alignItems: 'center',
-    justifyContent: 'center',
     padding: 20,
   },
   title: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: 'bold',
-    // Usamos el color primario
     color: Colors.primary,
     textAlign: 'center',
+    marginBottom: 20,
   },
-  subtitle: {
+  form: {
+    backgroundColor: '#fff',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 20,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
     fontSize: 16,
-    marginTop: 8,
-    // Usamos el color de texto secundario
-    color: Colors.textSecondary,
+    backgroundColor: '#fafafa',
+  },
+  textArea: {
+    height: 80,
+    textAlignVertical: 'top',
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: Colors.textPrimary,
+    marginBottom: 10,
+  },
+  list: {
+    flex: 1,
+  },
+  entryCard: {
+    backgroundColor: '#fff',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+  },
+  entryHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  entryEmotion: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: Colors.primary,
+  },
+  entryIntensity: {
+    fontSize: 14,
+    color: '#666',
+  },
+  entryNote: {
+    fontSize: 15,
+    color: '#444',
+    marginBottom: 12,
+    fontStyle: 'italic',
+  },
+  entryFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  entryDate: {
+    fontSize: 12,
+    color: '#999',
+  },
+  deleteButton: {
+    backgroundColor: '#e74c3c',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  deleteButtonText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  emptyText: {
     textAlign: 'center',
+    color: '#999',
+    fontStyle: 'italic',
+    marginTop: 20,
   },
 });
