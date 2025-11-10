@@ -265,6 +265,34 @@ export const getEntriesWithTags = () => {
   }
 };
 
+/**
+ * Obtiene una entrada por un string de fecha 'YYYY-MM-DD'
+ */
+export const getEntryByDateString = (dateString) => {
+  try {
+    // 1. Convertimos el string 'YYYY-MM-DD' al inicio del día en timestamp
+    const startOfDay = new Date(dateString).getTime();
+    
+    // 2. Calculamos el fin del día (un milisegundo antes del siguiente día)
+    // new Date(dateString) se crea a medianoche (local), getTime() da eso en UTC.
+    // Es más seguro solo tomar el timestamp de medianoche y buscar en el rango de ese día.
+    const tempDate = new Date(dateString);
+    tempDate.setHours(23, 59, 59, 999); // Fin del día
+    const endOfDay = tempDate.getTime();
+
+    // 3. Hacemos la query a la BD
+    const entry = db.getFirstSync(
+      `SELECT * FROM entries WHERE date >= ? AND date < ? LIMIT 1`,
+      [startOfDay, endOfDay]
+    );
+    return entry || null;
+
+  } catch (error) {
+    console.error('Error al obtener entrada por fecha:', error);
+    return null;
+  }
+};
+
 // ================================================================
 // BONUS: Borrar toda la base de datos (para pruebas)
 // ================================================================

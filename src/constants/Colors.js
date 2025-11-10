@@ -1,25 +1,33 @@
 export const Colors = {
   // Paleta principal
-  primary: '#4A90E2',   // Un azul amigable
-  accent: '#50E3C2',    // Un toque de menta
-  
+  primary: '#4A90E2',
+  accent: '#50E3C2',
+
   // Fondos
   background: '#FFFFFF',
-  backgroundSecondary: '#F4F4F8', // Un gris muy claro para tarjetas
+  backgroundSecondary: '#F4F4F8',
+  card: '#FFFFFF',
+  inputBg: '#FAFAFA',
 
   // Texto
   text: '#333333',
   textSecondary: '#888888',
   textLight: '#FFFFFF',
+  textMuted: '#999999',
+  textDark: '#444444',
 
-  // Colores de Emociones (Ejemplos)
-  emotionHappy: '#F8E71C',   // Amarillo
-  emotionSad: '#4A90E2',      // Azul
-  emotionAngry: '#D0021B',    // Rojo
-  emotionCalm: '#50E3C2',     // Menta/Verde
-  emotionAnxious: '#F5A623',  // Naranja
-
-  // Misc
+  // Bordes y sombras
   border: '#E0E0E0',
+  shadow: '#000000',
+
+  // Emociones
+  emotionHappy: '#F8E71C',
+  emotionSad: '#4A90E2',
+  emotionAngry: '#D0021B',
+  emotionCalm: '#50E3C2',
+  emotionAnxious: '#F5A623',
+
+  // UI
   error: '#D0021B',
+  deleteButton: '#e74c3c',
 };
