@@ -1,191 +1,175 @@
 // src/screens/EntryDetailScreen.js
-import React, { useState, useEffect } from 'react';
-// 1. IMPORTS CORREGIDOS: Faltaban varios
+import React, { useState, useEffect, useRef } from 'react';
 import {
     View, Text, TextInput, Button, StyleSheet, Alert,
-    TouchableOpacity, ScrollView
+    TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform
 } from 'react-native';
+// 1. IMPORTAMOS EL SLIDER
+import Slider from '@react-native-community/slider';
 import { Colors } from '../constants/Colors.js';
-// 2. IMPORTS DE BD OPTIMIZADOS:
-import {
-    addEntry, updateEntry, getEntryByDateString
-} from '../db/database.js';
+import { addEntry, updateEntry, getEntryByDateString } from '../db/database.js';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import SafeAreaWrapper from '../components/SafeAreaWrapper.js';
-
-const emotions = [
-    { name: 'feliz', emoji: '😊' },
-    { name: 'triste', emoji: '😢' },
-    { name: 'enojado', emoji: '😡' },
-    { name: 'calmado', emoji: '😌' },
-    { name: 'ansioso', emoji: '😰' },
-];
+import EmotionSelector from '../components/EmotionSelector.js'; // Importamos tu componente
 
 export default function EntryDetailScreen() {
     const route = useRoute();
     const navigation = useNavigation();
-    const { date } = route.params; // 'date' es 'YYYY-MM-DD'
+    const { date } = route.params;
 
-    // Tus estados (sin cambios)
+    // 2. CREAMOS UNA REFERENCIA (la "manija")
+    const scrollRef = useRef(null);
+
     const [emotion, setEmotion] = useState('');
-    const [intensity, setIntensity] = useState('5');
+    // 2. CAMBIAMOS EL VALOR INICIAL A '0'
+    const [intensity, setIntensity] = useState('0');
     const [note, setNote] = useState('');
-
-    // 3. NUEVO ESTADO: Para guardar la entrada si existe
     const [existingEntry, setExistingEntry] = useState(null);
 
-    // 4. useEffect OPTIMIZADO
     useEffect(() => {
-        // Usamos la función eficiente que creamos
         const entry = getEntryByDateString(date);
 
         if (entry) {
-            // Si hay entrada, llenamos los campos
             setEmotion(entry.emotion);
+            // 3. SI CARGA UNA ENTRADA, USA EL VALOR GUARDADO (o '5' por si acaso)
             setIntensity(entry.intensity?.toString() || '5');
             setNote(entry.note || '');
-            setExistingEntry(entry); // Guardamos la entrada
+            setExistingEntry(entry);
         } else {
-            // Si NO hay entrada, reseteamos los campos
+            // 4. SI ES UNA NUEVA ENTRADA, REINICIA A '0'
             setEmotion('');
-            setIntensity('5');
+            setIntensity('0');
             setNote('');
             setExistingEntry(null);
         }
-    }, [date]); // Se ejecuta cada vez que la fecha del parámetro cambia
+    }, [date]);
 
-    // 5. handleSave OPTIMIZADO
     const handleSave = () => {
+        // 5. VALIDACIÓN MEJORADA
         if (!emotion) {
-            Alert.alert('Error', 'Elige una emoción');
+            Alert.alert('Error', 'Por favor, elige una emoción.');
             return;
         }
 
-        // Arreglo de zona horaria:
-        // 'date' es 'YYYY-MM-DD' (ej: '2025-11-09')
-        // new Date('2025-11-09') lo interpreta como UTC (medianoche en UTC)
-        // lo que puede causar que sea el día ANTERIOR en tu zona horaria.
-        // La forma segura es:
+        const numericIntensity = parseInt(intensity);
+        if (numericIntensity === 0) {
+            Alert.alert('Error', 'Por favor, elige un nivel de intensidad.');
+            return;
+        }
+
         const [year, month, day] = date.split('-').map(Number);
         const safeDate = new Date(year, month - 1, day);
         const dateMs = safeDate.getTime();
 
-        // ¡Ya no necesitamos llamar a la BD!
         if (existingEntry) {
-            updateEntry(existingEntry.id, emotion, parseInt(intensity), note, dateMs);
+            updateEntry(existingEntry.id, emotion, numericIntensity, note, dateMs);
         } else {
-            addEntry(emotion, parseInt(intensity), note, dateMs);
+            addEntry(emotion, numericIntensity, note, dateMs);
         }
 
         navigation.goBack();
     };
 
-    // 6. LÓGICA DE FECHA CORREGIDA (para evitar el bug de UTC)
     const [year, month, day] = date.split('-').map(Number);
     const safeDate = new Date(year, month - 1, day);
     const displayDate = safeDate.toLocaleDateString('es-ES', {
         weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
     });
 
+    const handleNoteFocus = () => {
+        // Damos un pequeño retraso (100ms) para
+        // asegurarnos que el teclado ya empezó a subir
+        setTimeout(() => {
+            // Le decimos a nuestra "manija": ¡baja hasta el fondo!
+            scrollRef.current?.scrollToEnd({ animated: true });
+        }, 100);
+    };
+
     return (
         <SafeAreaWrapper>
-            {/* 7. Añadido ScrollView por si el teclado empuja los botones */}
-            <ScrollView contentContainerStyle={styles.container}>
-                {/* ¡AÑADIMOS ESTE BOTÓN! */}
-                <TouchableOpacity
-                    onPress={() => navigation.goBack()}
-                    style={styles.backButton}
+            <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                style={{ flex: 1 }}
+            >
+                <ScrollView
+                    ref={scrollRef}
+                    contentContainerStyle={styles.container}
                 >
-                    <Text style={styles.backButtonText}>{"<"}</Text>
-                </TouchableOpacity>
-                {/* Esta línea cumple tu requisito de hoy: */}
-                <Text style={styles.date}>{displayDate}</Text>
+                    <TouchableOpacity
+                        onPress={() => navigation.goBack()}
+                        style={styles.backButton}
+                    >
+                        <Text style={styles.backButtonText}>{"< Regresar"}</Text>
+                    </TouchableOpacity>
 
-                <Text style={styles.label}>¿Cómo te sentiste?</Text>
-                <View style={styles.emotions}>
-                    {emotions.map(e => (
-                        <TouchableOpacity
-                            key={e.name}
-                            style={[
-                                styles.emotionBtn,
-                                // Corregido: 'emotion' es el estado, 'e.name' es el del map
-                                emotion === e.name && styles.selected
-                            ]}
-                            onPress={() => setEmotion(e.name)}
-                        >
-                            <Text style={styles.emoji}>{e.emoji}</Text>
-                        </TouchableOpacity>
-                    ))}
-                </View>
+                    <Text style={styles.date}>{displayDate}</Text>
 
-                <Text style={styles.label}>Intensidad: {intensity}</Text>
-                <View style={styles.slider}>
-                    <Text>1</Text>
-                    <TextInput
-                        style={styles.input}
-                        value={intensity}
-                        onChangeText={setIntensity}
-                        keyboardType="numeric"
-                        maxLength={2} // Prevenimos '100'
+                    <Text style={styles.label}>¿Cómo te sentiste?</Text>
+                    {/* 6. LE PASAMOS LA EMOCIÓN INICIAL AL CARGAR */}
+                    <EmotionSelector
+                        onEmotionSelected={setEmotion}
+                        initialEmotion={emotion}
                     />
-                    <Text>10</Text>
-                </View>
 
-                <Text style={styles.label}>Notas del día</Text>
-                <TextInput
-                    style={styles.textArea}
-                    value={note}
-                    onChangeText={setNote}
-                    multiline
-                    placeholder="¿Qué pasó hoy? ¿Cómo te sentiste?"
-                    placeholderTextColor={Colors.textMuted}
-                />
+                    {/* 7. SECCIÓN DEL SLIDER REEMPLAZADA */}
+                    <Text style={styles.label}>Intensidad: {intensity}</Text>
+                    <Slider
+                        style={styles.slider}
+                        minimumValue={0}
+                        maximumValue={10}
+                        step={1} // Solo números enteros
+                        value={parseInt(intensity)} // El valor debe ser un número
+                        onValueChange={(value) => setIntensity(value.toString())}
+                        minimumTrackTintColor={Colors.primary}
+                        maximumTrackTintColor={Colors.border}
+                        thumbTintColor={Colors.primary}
+                    />
 
-                <Button title="Guardar" onPress={handleSave} color={Colors.primary} />
-            </ScrollView>
+                    <Text style={styles.label}>Notas del día</Text>
+                    <TextInput
+                        style={styles.textArea}
+                        value={note}
+                        onChangeText={setNote}
+                        multiline
+                        placeholder="¿Qué pasó hoy? ¿Cómo te sentiste?"
+                        placeholderTextColor={Colors.textMuted}
+                        onFocus={handleNoteFocus}
+                    />
+
+                    <Button title="Guardar" onPress={handleSave} color={Colors.primary} />
+                </ScrollView>
+            </KeyboardAvoidingView>
         </SafeAreaWrapper>
     );
 }
 
-// Estilos sin cambios, solo 'container' ahora es 'contentContainerStyle'
+// ESTILOS ACTUALIZADOS
 const styles = StyleSheet.create({
     container: {
-        flexGrow: 1, // Permite que el ScrollView crezca
-        padding: 20
+        flexGrow: 1,
+        paddingHorizontal: 20,
+        paddingTop: 20,
+        paddingBottom: 100,
     },
     backButton: {
-      alignSelf: 'flex-start', // Para que no ocupe todo el ancho
-      paddingVertical: 4,      // Un poco de padding
-      marginBottom: 10,      // Separación del título de fecha
+        alignSelf: 'flex-start',
+        paddingVertical: 4,
+        marginBottom: 10,
     },
-    backButtonText: { // <-- Este es el estilo que faltaba
-      color: Colors.primary,
-      fontSize: 16, // (16 es más razonable, pero pon el tamaño que quieras)
-      fontWeight: '500',
+    backButtonText: {
+        color: Colors.primary,
+        fontSize: 16,
+        fontWeight: '500',
     },
     date: { fontSize: 20, fontWeight: 'bold', color: Colors.primary, textAlign: 'center', marginBottom: 20 },
     label: { fontSize: 16, marginTop: 20, marginBottom: 10, color: Colors.text },
-    emotions: { flexDirection: 'row', justifyContent: 'space-around' },
-    emotionBtn: { padding: 15, borderRadius: 50, backgroundColor: '#f0f0f0' },
-    selected: {
-        backgroundColor: Colors.primary,
-        // Añadimos una sombra/borde para que destaque
-        shadowColor: Colors.primary,
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.5,
-        shadowRadius: 3,
-        elevation: 5,
+
+    // 8. NUEVO ESTILO PARA EL SLIDER
+    slider: {
+        width: '100%',
+        height: 40, // Altura para el área de toque
     },
-    emoji: { fontSize: 32 },
-    slider: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
-    input: {
-        width: 50,
-        textAlign: 'center',
-        marginHorizontal: 20,
-        borderBottomWidth: 1,
-        borderColor: Colors.border, // Damos color al borde
-        fontSize: 16, // Tamaño de fuente
-    },
+
     textArea: {
         height: 120,
         borderWidth: 1,
@@ -193,6 +177,6 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         padding: 10,
         textAlignVertical: 'top',
-        marginBottom: 20, // Espacio antes del botón
+        marginBottom: 20,
     },
 });

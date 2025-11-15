@@ -270,21 +270,22 @@ export const getEntriesWithTags = () => {
  */
 export const getEntryByDateString = (dateString) => {
   try {
-    // 1. Convertimos el string 'YYYY-MM-DD' al inicio del día en timestamp
-    const startOfDay = new Date(dateString).getTime();
+    // 1. Usamos la MISMA lógica "segura" que en 'handleSave'
+    // para crear la fecha en HORA LOCAL
+    const [year, month, day] = dateString.split('-').map(Number);
     
-    // 2. Calculamos el fin del día (un milisegundo antes del siguiente día)
-    // new Date(dateString) se crea a medianoche (local), getTime() da eso en UTC.
-    // Es más seguro solo tomar el timestamp de medianoche y buscar en el rango de ese día.
-    const tempDate = new Date(dateString);
-    tempDate.setHours(23, 59, 59, 999); // Fin del día
-    const endOfDay = tempDate.getTime();
+    // 2. Definimos el inicio del día (00:00:00 local)
+    const startOfDay = new Date(year, month - 1, day, 0, 0, 0, 0).getTime();
+    
+    // 3. Definimos el fin del día (23:59:59 local)
+    const endOfDay = new Date(year, month - 1, day, 23, 59, 59, 999).getTime();
 
-    // 3. Hacemos la query a la BD
+    // 4. Buscamos en la BD cualquier entrada DENTRO de ese rango de 24h
     const entry = db.getFirstSync(
-      `SELECT * FROM entries WHERE date >= ? AND date < ? LIMIT 1`,
+      `SELECT * FROM entries WHERE date >= ? AND date <= ? LIMIT 1`,
       [startOfDay, endOfDay]
     );
+    
     return entry || null;
 
   } catch (error) {

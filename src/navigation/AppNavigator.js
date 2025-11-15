@@ -12,10 +12,10 @@ export default function AppNavigator() {
   return (
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="EmotionTree" component={EmotionWheelTestScreen} />
         <Stack.Screen name="Calendar" component={CalendarScreen} />
         <Stack.Screen name="EntryDetail" component={EntryDetailScreen} />
         <Stack.Screen name="Home" component={HomeScreen} />
+        <Stack.Screen name="EmotionTree" component={EmotionWheelTestScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
