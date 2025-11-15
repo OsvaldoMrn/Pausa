@@ -157,7 +157,11 @@ const styles = StyleSheet.create({
       alignSelf: 'flex-start', // Para que no ocupe todo el ancho
       paddingVertical: 4,      // Un poco de padding
       marginBottom: 10,      // Separación del título de fecha
-      fontSize: 40,
+    },
+    backButtonText: { // <-- Este es el estilo que faltaba
+      color: Colors.primary,
+      fontSize: 16, // (16 es más razonable, pero pon el tamaño que quieras)
+      fontWeight: '500',
     },
     date: { fontSize: 20, fontWeight: 'bold', color: Colors.primary, textAlign: 'center', marginBottom: 20 },
     label: { fontSize: 16, marginTop: 20, marginBottom: 10, color: Colors.text },
