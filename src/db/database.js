@@ -294,6 +294,30 @@ export const getEntryByDateString = (dateString) => {
   }
 };
 
+export const getEntriesForDay = (dateString) => {
+  try {
+    const [year, month, day] = dateString.split('-').map(Number);
+    
+    // Inicio del día (00:00:00)
+    const startOfDay = new Date(year, month - 1, day, 0, 0, 0, 0).getTime();
+    
+    // Fin del día (23:59:59)
+    const endOfDay = new Date(year, month - 1, day, 23, 59, 59, 999).getTime();
+
+    // Usamos getAllSync para traer el array completo
+    const entries = db.getAllSync(
+      `SELECT * FROM entries WHERE date >= ? AND date <= ? ORDER BY date ASC`,
+      [startOfDay, endOfDay]
+    );
+    
+    return entries;
+
+  } catch (error) {
+    console.error('Error al obtener entradas del día:', error);
+    return [];
+  }
+};
+
 // ================================================================
 // BONUS: Borrar toda la base de datos (para pruebas)
 // ================================================================

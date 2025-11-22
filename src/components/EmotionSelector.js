@@ -51,6 +51,10 @@ export default function EmotionSelector({ onEmotionSelected, initialEmotion = ""
           }
         }
       }
+    } else{
+      setSelection({abuelo: null, padre: null, nieto: null});
+      setActiveAbuelo(null);
+      setActivePadre(null);
     }
   }, [initialEmotion]); // Solo se ejecuta 1 vez al cargar
 

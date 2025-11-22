@@ -1,5 +1,5 @@
 // src/screens/CalendarScreen.js
-import React, { useState, useEffect, useMemo } from 'react'; // 1. IMPORTAMOS useMemo
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import { Colors } from '../constants/Colors.js';
@@ -8,9 +8,7 @@ import { useNavigation } from '@react-navigation/native';
 import SafeAreaWrapper from '../components/SafeAreaWrapper';
 import { getEmotionColor } from '../utils/emotionUtils.js';
 
-// ================================================================
-// HELPER 1: (EL QUE FALTABA)
-// ================================================================
+// ... (getLocalDateString y getWeekDays se quedan IGUAL, no los borres)
 const getLocalDateString = (dateMs) => {
   const date = new Date(dateMs);
   const year = date.getFullYear();
@@ -19,9 +17,6 @@ const getLocalDateString = (dateMs) => {
   return `${year}-${month}-${dateNum}`;
 };
 
-// ================================================================
-// HELPER 2: (Tu función, sin cambios)
-// ================================================================
 const getWeekDays = (date) => {
   const today = new Date(date);
   const dayOfWeek = today.getDay();
@@ -46,38 +41,46 @@ const getWeekDays = (date) => {
   return week;
 };
 
-// ================================================================
-// Componente Principal
-// ================================================================
 export default function CalendarScreen() {
   const [markedDates, setMarkedDates] = useState({});
   const [currentWeek, setCurrentWeek] = useState([]);
   const navigation = useNavigation();
   const [focusedWeekDate, setFocusedWeekDate] = useState(new Date());
 
-  // 2. CORRECCIÓN DEL BUCLE INFINITO
-  // Usamos useMemo para que 'today' solo se calcule una vez
   const today = useMemo(() => new Date().toISOString().split('T')[0], []);
 
-  // 3. useEffect (El que te pasé, ahora sí funcionará)
   useEffect(() => {
-    
     const loadData = () => {
+      // 1. Obtenemos TODAS las entradas (vienen ordenadas por fecha DESC: la más reciente primero)
       const entries = getAllEntries();
+      
       const newMarkedDates = {};
-      const entriesMap = new Map();
+      // 2. El mapa ahora guardará un ARRAY de entradas, no una sola
+      const entriesMap = new Map(); 
       
       entries.forEach(entry => {
-        // Usamos el helper que sí existe ahora
         const dateStr = getLocalDateString(entry.date);
-        const color = getEmotionColor(entry.emotion);
         
+        // --- LÓGICA DE AGRUPACIÓN ---
+        if (!entriesMap.has(dateStr)) {
+          entriesMap.set(dateStr, []);
+        }
+        // Añadimos la entrada al array de ese día
+        entriesMap.get(dateStr).push(entry);
+      });
+
+      // --- LÓGICA DE CALENDARIO (Solo color de la última) ---
+      // Iteramos sobre los días que tienen datos
+      entriesMap.forEach((dayEntries, dateStr) => {
+        // Como getAllEntries devuelve DESC (más reciente primero),
+        // la entrada [0] es la ÚLTIMA que registró el usuario.
+        const latestEntry = dayEntries[0]; 
+        const color = getEmotionColor(latestEntry.emotion);
+
         newMarkedDates[dateStr] = {
           selected: true,
           selectedColor: color || Colors.primary,
         };
-        
-        entriesMap.set(dateStr, entry);
       });
       
       if (newMarkedDates[today]) {
@@ -85,51 +88,64 @@ export default function CalendarScreen() {
       }
       setMarkedDates(newMarkedDates);
 
-      // Esta lógica ahora es segura
+      // --- LÓGICA DE PLAYLIST ---
       const weekDays = getWeekDays(focusedWeekDate);
       const newCurrentWeek = weekDays.map(day => {
+        // Obtenemos EL ARRAY de entradas para ese día (o array vacío)
+        const dayEntries = entriesMap.get(day.id) || [];
         return {
           ...day,
-          entry: entriesMap.get(day.id) || null,
+          entries: dayEntries, // Pasamos todas las entradas
         };
       });
+      
       setCurrentWeek(newCurrentWeek);
     };
 
-    // --- Ejecución ---
     loadData();
     const focusListener = navigation.addListener('focus', loadData);
     return focusListener;
     
-  }, [navigation, focusedWeekDate, today]); // Ahora 'today' es estable
+  }, [navigation, focusedWeekDate, today]);
 
   const handleDayPress = (day) => {
     navigation.navigate('EntryDetail', { date: day.dateString });
   };
 
+  // ... (handlePrevWeek y handleNextWeek siguen igual) ...
   const handlePrevWeek = () => {
     setFocusedWeekDate(prevDate => {
-      const newDate = new Date(prevDate);
-      newDate.setDate(prevDate.getDate() - 7);
-      return newDate;
+        const newDate = new Date(prevDate);
+        newDate.setDate(prevDate.getDate() - 7);
+        return newDate;
     });
   };
 
   const handleNextWeek = () => {
     setFocusedWeekDate(prevDate => {
-      const newDate = new Date(prevDate);
-      newDate.setDate(prevDate.getDate() + 7);
-      return newDate;
+        const newDate = new Date(prevDate);
+        newDate.setDate(prevDate.getDate() + 7);
+        return newDate;
     });
   };
 
-  // 4. RENDER ITEM (El que te pasé, ahora sí funcionará)
+  // 3. RENDER ITEM ACTUALIZADO
   const renderDayItem = ({ item }) => {
-    const entry = item.entry;
+    const dayEntries = item.entries; // Esto es un array
+    const hasEntries = dayEntries && dayEntries.length > 0;
     
-    const bgColor = entry ? getEmotionColor(entry.emotion) + '40' : Colors.card;
-    const emotionText = entry ? entry.emotion : 'Sin registro';
-    const textStyle = entry ? styles.dayEmotionText : styles.dayContentPlaceholder;
+    // Color de fondo: Usamos la más reciente (índice 0)
+    const latestEntry = hasEntries ? dayEntries[0] : null;
+    const bgColor = latestEntry ? getEmotionColor(latestEntry.emotion) + '40' : Colors.card;
+    
+    // Texto: Juntamos TODAS las emociones
+    // map crea una lista de nombres, reverse para que salga en orden cronológico (mañana -> noche), join une con comas
+    // Nota: dayEntries viene DESC (Noche, Tarde, Mañana). Hacemos reverse para leer natural.
+    const emotionText = hasEntries 
+      ? dayEntries.map(e => e.emotion).reverse().join(', ') 
+      : 'Sin registro';
+
+    const textStyle = hasEntries ? styles.dayEmotionText : styles.dayContentPlaceholder;
     
     return (
       <TouchableOpacity
@@ -137,7 +153,7 @@ export default function CalendarScreen() {
       >
         <View style={[styles.dayRow, { backgroundColor: bgColor }]}>
           <Text style={styles.dayText}>{item.formatted}</Text>
-          <Text style={textStyle}>
+          <Text style={textStyle} numberOfLines={1} ellipsizeMode="tail">
             {emotionText}
           </Text>
         </View>
@@ -157,7 +173,22 @@ export default function CalendarScreen() {
             markedDates={markedDates}
             hideExtraDays={true}
             enableSwipeMonths={true}
-            theme={{ /* ... */ }}
+            theme={{ /* ...Tus estilos del tema... */ 
+                backgroundColor: Colors.background,
+                calendarBackground: Colors.background,
+                textSectionTitleColor: Colors.textSecondary,
+                selectedDayBackgroundColor: Colors.primary,
+                selectedDayTextColor: '#ffffff',
+                todayTextColor: Colors.primary,
+                todayBackgroundColor: 'transparent',
+                dayTextColor: Colors.text,
+                textDisabledColor: Colors.textSecondary + '50',
+                monthTextColor: Colors.primary,
+                arrowColor: Colors.primary,
+                textDayFontWeight: '500',
+                textMonthFontWeight: 'bold',
+                textDayHeaderFontWeight: '600',
+            }}
             style={styles.calendar}
           />
 
@@ -183,72 +214,18 @@ export default function CalendarScreen() {
   );
 }
 
-// 5. ESTILOS (Los que te pasé)
+// 4. ESTILOS (Sin cambios importantes, solo numberOfLines en el Text maneja el desborde)
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: Colors.primary,
-    textAlign: 'center',
-    paddingVertical: 20,
-  },
-  calendar: {
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
-  },
-  listContainer: {
-    flex: 1,
-    marginTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
-  },
-  listHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 8,
-    backgroundColor: Colors.backgroundSecondary,
-  },
-  listTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: Colors.text,
-  },
-  arrowButton: {
-    padding: 8,
-  },
-  arrowText: {
-    fontSize: 18,
-    color: Colors.primary,
-    fontWeight: 'bold',
-  },
-  dayRow: { 
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-    minHeight: 80,
-    justifyContent: 'center', 
-  },
-  dayText: { 
-    fontSize: 16,
-    color: Colors.textDark,
-    fontWeight: '500',
-    marginBottom: 6,
-  },
-  dayContentPlaceholder: { 
-    fontSize: 14,
-    color: Colors.textMuted,
-    fontStyle: 'italic',
-  },
-  dayEmotionText: { 
-    fontSize: 15,
-    color: Colors.text,
-    fontWeight: 'bold',
-  }
+  container: { flex: 1 },
+  title: { fontSize: 28, fontWeight: 'bold', color: Colors.primary, textAlign: 'center', paddingVertical: 20 },
+  calendar: { borderTopWidth: 1, borderTopColor: Colors.border },
+  listContainer: { flex: 1, marginTop: 16, borderTopWidth: 1, borderTopColor: Colors.border },
+  listHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8, backgroundColor: Colors.backgroundSecondary },
+  listTitle: { fontSize: 18, fontWeight: 'bold', color: Colors.text },
+  arrowButton: { padding: 8 },
+  arrowText: { fontSize: 18, color: Colors.primary, fontWeight: 'bold' },
+  dayRow: { paddingVertical: 16, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: Colors.border, minHeight: 80, justifyContent: 'center' },
+  dayText: { fontSize: 16, color: Colors.textDark, fontWeight: '500', marginBottom: 6 },
+  dayContentPlaceholder: { fontSize: 14, color: Colors.textMuted, fontStyle: 'italic' },
+  dayEmotionText: { fontSize: 15, color: Colors.text, fontWeight: 'bold' }
 });
