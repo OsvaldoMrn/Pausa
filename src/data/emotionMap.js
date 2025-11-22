@@ -3,7 +3,7 @@
 export const emotionTree = [
   {
     name: 'Felicidad',
-    color: '#F8E71C', 
+    color: '#27AE60', 
     children: [
       {
         name: 'Orgulloso',
@@ -51,7 +51,7 @@ export const emotionTree = [
   },
   {
     name: 'Sorpresa',
-    color: '#50E3C2',
+    color: '#00897B',
     children: [
       {
         name: 'Interesado',
@@ -99,7 +99,7 @@ export const emotionTree = [
   },
   {
     name: 'Miedo',
-    color: '#C763E0', 
+    color: '#E056FD', 
     children: [
       {
         name: 'Herido',
@@ -147,7 +147,7 @@ export const emotionTree = [
   },
   {
     name: 'Disgusto',
-    color: '#F5A623', 
+    color: '#FF9F43', 
     children: [
       {
         name: 'Crítico',
@@ -243,7 +243,7 @@ export const emotionTree = [
   },
   {
     name: 'Ira',
-    color: '#D0021B', 
+    color: '#FF6B6B', 
     children: [
       {
         name: 'Amenazado',

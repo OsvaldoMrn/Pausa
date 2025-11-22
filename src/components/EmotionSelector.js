@@ -200,54 +200,53 @@ export default function EmotionSelector({ onEmotionSelected, initialEmotion = ""
 // 6. Los estilos son los mismos, solo añadí un 'wrapper'
 const styles = StyleSheet.create({
   wrapper: {
-    // Contenedor principal del componente
+    marginBottom: 20,
   },
   container: { 
-    flexDirection: 'row', 
-    // Quitamos padding, EntryDetailScreen lo maneja
+    flexDirection: 'row',
+    // ¡SIN HEIGHT FIJO! Dejamos que crezca con el contenido
   },
   column: { 
     flex: 1, 
-    marginHorizontal: 3, // Un poco más junto
-    backgroundColor: Colors.background, 
-    borderRadius: 16, 
-    overflow: 'hidden',
-    borderColor: Colors.border,
-    borderWidth: 1,
+    marginHorizontal: 4, 
+    backgroundColor: Colors.card, 
+    borderRadius: 12, 
+    overflow: 'hidden', // Esto recorta las esquinas de los botones
+    
+    // Sombras modernas (Card Style)
+    elevation: 3, // Android
+    shadowColor: '#000', // iOS
+    shadowOpacity: 0.1, 
+    shadowRadius: 4, 
+    shadowOffset: {width: 0, height: 2},
   },
   emotionButton: { 
     height: BUTTON_HEIGHT, 
     justifyContent: 'center', 
     alignItems: 'center', 
+    // Línea separadora sutil en lugar de borde completo
     borderBottomWidth: 1, 
-    borderBottomColor: Colors.border,
+    borderBottomColor: Colors.inputBg, 
   },
   emotionText: { 
-    fontSize: 14, // Un poco más pequeño
+    fontSize: 13, 
     fontWeight: '600', 
     color: Colors.text,
-    textAlign: 'center', // Para nombres largos
-    paddingHorizontal: 2, // Padding
+    textAlign: 'center',
+    paddingHorizontal: 2,
   },
+  // ... (estilos de selection siguen igual)
   selection: { 
-    padding: 16, 
+    backgroundColor: Colors.card,
+    padding: 12, 
     borderRadius: 12,
-    marginTop: 12, // Espacio entre columnas y caja
-    borderWidth: 2,
+    marginTop: 12,
+    alignItems: 'center',
+    elevation: 2,
+    shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 4, shadowOffset: {width:0, height:2},
   },
-  selectionText: { 
-    fontWeight: 'bold', 
-    textAlign: 'center', 
-    fontSize: 16,
-  },
-  selectionTextDoneDark: {
-    color: Colors.textDark,
-  },
-  selectionTextDoneLight: {
-    color: Colors.textLight,
-  },
-  selectionTextExploring: {
-    color: Colors.textMuted,
-    fontStyle: 'italic',
-  }
+  selectionText: { fontWeight: 'bold', fontSize: 15 },
+  selectionTextDoneDark: { color: Colors.textDark },
+  selectionTextDoneLight: { color: Colors.textLight },
+  selectionTextExploring: { color: Colors.textMuted, fontStyle: 'italic' }
 });

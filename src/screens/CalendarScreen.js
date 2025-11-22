@@ -7,6 +7,8 @@ import { getAllEntries } from '../db/database.js';
 import { useNavigation } from '@react-navigation/native';
 import SafeAreaWrapper from '../components/SafeAreaWrapper';
 import { getEmotionColor } from '../utils/emotionUtils.js';
+import { Ionicons } from '@expo/vector-icons';
+
 
 // ... (getLocalDateString y getWeekDays se quedan IGUAL, no los borres)
 const getLocalDateString = (dateMs) => {
@@ -53,14 +55,14 @@ export default function CalendarScreen() {
     const loadData = () => {
       // 1. Obtenemos TODAS las entradas (vienen ordenadas por fecha DESC: la más reciente primero)
       const entries = getAllEntries();
-      
+
       const newMarkedDates = {};
       // 2. El mapa ahora guardará un ARRAY de entradas, no una sola
-      const entriesMap = new Map(); 
-      
+      const entriesMap = new Map();
+
       entries.forEach(entry => {
         const dateStr = getLocalDateString(entry.date);
-        
+
         // --- LÓGICA DE AGRUPACIÓN ---
         if (!entriesMap.has(dateStr)) {
           entriesMap.set(dateStr, []);
@@ -74,7 +76,7 @@ export default function CalendarScreen() {
       entriesMap.forEach((dayEntries, dateStr) => {
         // Como getAllEntries devuelve DESC (más reciente primero),
         // la entrada [0] es la ÚLTIMA que registró el usuario.
-        const latestEntry = dayEntries[0]; 
+        const latestEntry = dayEntries[0];
         const color = getEmotionColor(latestEntry.emotion);
 
         newMarkedDates[dateStr] = {
@@ -82,7 +84,7 @@ export default function CalendarScreen() {
           selectedColor: color || Colors.primary,
         };
       });
-      
+
       if (newMarkedDates[today]) {
         newMarkedDates[today].selected = true;
       }
@@ -98,14 +100,14 @@ export default function CalendarScreen() {
           entries: dayEntries, // Pasamos todas las entradas
         };
       });
-      
+
       setCurrentWeek(newCurrentWeek);
     };
 
     loadData();
     const focusListener = navigation.addListener('focus', loadData);
     return focusListener;
-    
+
   }, [navigation, focusedWeekDate, today]);
 
   const handleDayPress = (day) => {
@@ -115,117 +117,134 @@ export default function CalendarScreen() {
   // ... (handlePrevWeek y handleNextWeek siguen igual) ...
   const handlePrevWeek = () => {
     setFocusedWeekDate(prevDate => {
-        const newDate = new Date(prevDate);
-        newDate.setDate(prevDate.getDate() - 7);
-        return newDate;
+      const newDate = new Date(prevDate);
+      newDate.setDate(prevDate.getDate() - 7);
+      return newDate;
     });
   };
 
   const handleNextWeek = () => {
     setFocusedWeekDate(prevDate => {
-        const newDate = new Date(prevDate);
-        newDate.setDate(prevDate.getDate() + 7);
-        return newDate;
+      const newDate = new Date(prevDate);
+      newDate.setDate(prevDate.getDate() + 7);
+      return newDate;
     });
   };
 
   // 3. RENDER ITEM ACTUALIZADO
   const renderDayItem = ({ item }) => {
-    const dayEntries = item.entries; // Esto es un array
+    const dayEntries = item.entries;
     const hasEntries = dayEntries && dayEntries.length > 0;
-    
-    // Color de fondo: Usamos la más reciente (índice 0)
     const latestEntry = hasEntries ? dayEntries[0] : null;
-    const bgColor = latestEntry ? getEmotionColor(latestEntry.emotion) + '40' : Colors.card;
-    
-    // Texto: Juntamos TODAS las emociones
-    // map crea una lista de nombres, reverse para que salga en orden cronológico (mañana -> noche), join une con comas
-    // Nota: dayEntries viene DESC (Noche, Tarde, Mañana). Hacemos reverse para leer natural.
-    const emotionText = hasEntries 
-      ? dayEntries.map(e => e.emotion).reverse().join(', ') 
-      : 'Sin registro';
+    // Solo usamos el color como una pequeña barra lateral o indicador, no todo el fondo
+    const indicatorColor = latestEntry ? getEmotionColor(latestEntry.emotion) : Colors.border;
+    const emotionText = hasEntries ? dayEntries.map(e => e.emotion).reverse().join(', ') : 'Sin registro';
 
-    const textStyle = hasEntries ? styles.dayEmotionText : styles.dayContentPlaceholder;
-    
     return (
-      <TouchableOpacity
-        onPress={() => navigation.navigate('EntryDetail', { date: item.id })}
-      >
-        <View style={[styles.dayRow, { backgroundColor: bgColor }]}>
-          <Text style={styles.dayText}>{item.formatted}</Text>
-          <Text style={textStyle} numberOfLines={1} ellipsizeMode="tail">
-            {emotionText}
-          </Text>
+      <TouchableOpacity onPress={() => navigation.navigate('EntryDetail', { date: item.id })}>
+        <View style={styles.cardItem}>
+          {/* Indicador de color a la izquierda */}
+          <View style={[styles.colorIndicator, { backgroundColor: indicatorColor }]} />
+
+          <View style={styles.cardContent}>
+            <Text style={styles.dayText}>{item.formatted}</Text>
+            <Text style={[styles.entryText, !hasEntries && styles.placeholderText]} numberOfLines={1}>
+              {emotionText}
+            </Text>
+          </View>
+
+          {/* Flechita sutil */}
+          <Ionicons name="chevron-forward" size={20} color={Colors.textMuted} />
         </View>
       </TouchableOpacity>
     );
   };
 
   return (
-      <SafeAreaWrapper>
-        <View style={styles.container}>
-          <Text style={styles.title}>Pausa</Text>
+    <SafeAreaWrapper>
+      <View style={styles.container}>
+        <Text style={styles.title}>Pausa</Text>
 
-          <Calendar
-            current={today}
-            minDate={'2020-01-01'}
-            onDayPress={handleDayPress}
-            markedDates={markedDates}
-            hideExtraDays={true}
-            enableSwipeMonths={true}
-            theme={{ /* ...Tus estilos del tema... */ 
-                backgroundColor: Colors.background,
-                calendarBackground: Colors.background,
-                textSectionTitleColor: Colors.textSecondary,
-                selectedDayBackgroundColor: Colors.primary,
-                selectedDayTextColor: '#ffffff',
-                todayTextColor: Colors.primary,
-                todayBackgroundColor: 'transparent',
-                dayTextColor: Colors.text,
-                textDisabledColor: Colors.textSecondary + '50',
-                monthTextColor: Colors.primary,
-                arrowColor: Colors.primary,
-                textDayFontWeight: '500',
-                textMonthFontWeight: 'bold',
-                textDayHeaderFontWeight: '600',
-            }}
-            style={styles.calendar}
-          />
+        <Calendar
+          current={today}
+          minDate={'2020-01-01'}
+          onDayPress={handleDayPress}
+          markedDates={markedDates}
+          hideExtraDays={true}
+          enableSwipeMonths={true}
+          theme={{ /* ...Tus estilos del tema... */
+            backgroundColor: Colors.background,
+            calendarBackground: Colors.background,
+            textSectionTitleColor: Colors.textSecondary,
+            selectedDayBackgroundColor: Colors.primary,
+            selectedDayTextColor: '#ffffff',
+            todayTextColor: Colors.primary,
+            todayBackgroundColor: 'transparent',
+            dayTextColor: Colors.text,
+            textDisabledColor: Colors.textSecondary + '50',
+            monthTextColor: Colors.primary,
+            arrowColor: Colors.primary,
+            textDayFontWeight: '500',
+            textMonthFontWeight: 'bold',
+            textDayHeaderFontWeight: '600',
+          }}
+          style={styles.calendar}
+        />
 
-          <View style={styles.listContainer}>
-            <View style={styles.listHeader}>
-              <TouchableOpacity onPress={handlePrevWeek} style={styles.arrowButton}>
-                <Text style={styles.arrowText}>{"<"}</Text>
-              </TouchableOpacity>
-              <Text style={styles.listTitle}>Resumen Semanal</Text>
-              <TouchableOpacity onPress={handleNextWeek} style={styles.arrowButton}>
-                <Text style={styles.arrowText}>{">"}</Text>
-              </TouchableOpacity>
-            </View>
-
-            <FlatList
-              data={currentWeek}
-              renderItem={renderDayItem}
-              keyExtractor={item => item.id}
-            />
+        <View style={styles.listContainer}>
+          <View style={styles.listHeader}>
+            <TouchableOpacity onPress={handlePrevWeek} style={styles.arrowButton}>
+              <Text style={styles.arrowText}>{"<"}</Text>
+            </TouchableOpacity>
+            <Text style={styles.listTitle}>Resumen Semanal</Text>
+            <TouchableOpacity onPress={handleNextWeek} style={styles.arrowButton}>
+              <Text style={styles.arrowText}>{">"}</Text>
+            </TouchableOpacity>
           </View>
+
+          <FlatList
+            data={currentWeek}
+            renderItem={renderDayItem}
+            keyExtractor={item => item.id}
+          />
         </View>
-      </SafeAreaWrapper>
+      </View>
+    </SafeAreaWrapper>
   );
 }
 
 // 4. ESTILOS (Sin cambios importantes, solo numberOfLines en el Text maneja el desborde)
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { flex: 1, backgroundColor: Colors.background },
   title: { fontSize: 28, fontWeight: 'bold', color: Colors.primary, textAlign: 'center', paddingVertical: 20 },
   calendar: { borderTopWidth: 1, borderTopColor: Colors.border },
-  listContainer: { flex: 1, marginTop: 16, borderTopWidth: 1, borderTopColor: Colors.border },
-  listHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8, backgroundColor: Colors.backgroundSecondary },
+  listContainer: { flex: 1, paddingHorizontal: 10 },
+  listHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8, backgroundColor: Colors.backgroundSecondary, marginBottom: 10 },
   listTitle: { fontSize: 18, fontWeight: 'bold', color: Colors.text },
   arrowButton: { padding: 8 },
   arrowText: { fontSize: 18, color: Colors.primary, fontWeight: 'bold' },
   dayRow: { paddingVertical: 16, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: Colors.border, minHeight: 80, justifyContent: 'center' },
   dayText: { fontSize: 16, color: Colors.textDark, fontWeight: '500', marginBottom: 6 },
   dayContentPlaceholder: { fontSize: 14, color: Colors.textMuted, fontStyle: 'italic' },
-  dayEmotionText: { fontSize: 15, color: Colors.text, fontWeight: 'bold' }
+  dayEmotionText: { fontSize: 15, color: Colors.text, fontWeight: 'bold' },
+  cardItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.card,
+    borderRadius: 12,
+    marginBottom: 10,
+    padding: 15,
+    elevation: 2, // Sombra
+    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }
+  },
+  colorIndicator: {
+    width: 6,
+    height: 40,
+    borderRadius: 3,
+    marginRight: 15,
+  },
+  cardContent: { flex: 1 },
+  dayText: { fontSize: 16, fontWeight: 'bold', color: Colors.text, marginBottom: 4, textTransform: 'capitalize' },
+  entryText: { fontSize: 14, color: Colors.textSecondary },
+  placeholderText: { color: Colors.textMuted, fontStyle: 'italic' },
 });
