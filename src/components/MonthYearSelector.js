@@ -1,5 +1,5 @@
 // src/components/MonthYearSelector.js
-import React, { useState, useMemo, useCallback } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/Colors';
@@ -11,37 +11,15 @@ const MONTHS_ES = [
     'Oct', 'Nov', 'Dic'
 ];
 
-// Recibe el mes y año seleccionados y los setters como props
-export default function MonthYearSelector({ initialMonth, initialYear, onMonthChange, onYearChange }) {
+// AHORA RECIBE UN ARRAY DE MESES Y ONMONTHTOGGLE
+export default function MonthYearSelector({ selectedMonths = [], selectedYear, onMonthToggle, onYearChange }) {
     
-    const [currentYear, setCurrentYear] = useState(initialYear);
-    const [selectedMonthIndex, setSelectedMonthIndex] = useState(initialMonth - 1); // 0-11
-
-    // Sincronizar el estado interno con las props iniciales (solo al cargar)
-    useState(() => {
-        setSelectedMonthIndex(initialMonth - 1);
-        setCurrentYear(initialYear);
-    }, [initialMonth, initialYear]);
-    
-    // Handler para cambiar el mes
-    const handleMonthPress = useCallback((index) => {
-        setSelectedMonthIndex(index);
-        onMonthChange(index + 1); // Devuelve el mes 1-12
-    }, [onMonthChange]);
-
     // Handler para cambiar el año
-    const handleYearChange = useCallback((offset) => {
-        const newYear = currentYear + offset;
-        setCurrentYear(newYear);
+    const handleYearChange = (offset) => {
+        const newYear = selectedYear + offset;
         onYearChange(newYear);
-    }, [currentYear, onYearChange]);
+    };
     
-    // Helper para determinar si el mes actual de la tabla es el mes actual del calendario real
-    const isCurrentCalendarMonth = useMemo(() => {
-        const today = new Date();
-        return currentYear === today.getFullYear() && selectedMonthIndex === today.getMonth();
-    }, [currentYear, selectedMonthIndex]);
-
     return (
         <View style={styles.container}>
             {/* 1. HEADER (Año y Flechas) */}
@@ -50,7 +28,7 @@ export default function MonthYearSelector({ initialMonth, initialYear, onMonthCh
                     <Ionicons name="chevron-back" size={24} color={Colors.primary} />
                 </TouchableOpacity>
 
-                <Text style={styles.yearText}>{currentYear}</Text>
+                <Text style={styles.yearText}>{selectedYear}</Text>
                 
                 <TouchableOpacity onPress={() => handleYearChange(1)} style={styles.arrowButton}>
                     <Ionicons name="chevron-forward" size={24} color={Colors.primary} />
@@ -60,7 +38,9 @@ export default function MonthYearSelector({ initialMonth, initialYear, onMonthCh
             {/* 2. CUERPO (Tabla 3x4 de Meses) */}
             <View style={styles.grid}>
                 {MONTHS_ES.map((monthName, index) => {
-                    const isSelected = index === selectedMonthIndex;
+                    const monthNumber = index + 1; // 1 para Enero, etc.
+                    // Verificamos si este mes está en el array de seleccionados
+                    const isSelected = selectedMonths.includes(monthNumber);
                     
                     return (
                         <TouchableOpacity
@@ -68,15 +48,14 @@ export default function MonthYearSelector({ initialMonth, initialYear, onMonthCh
                             style={[
                                 styles.monthButton,
                                 isSelected && styles.monthButtonSelected,
-                                // Si no es el mes seleccionado, lo dejamos semi-transparente
                                 !isSelected && { backgroundColor: Colors.card } 
                             ]}
-                            onPress={() => handleMonthPress(index)}
+                            // Al presionar, llamamos al toggle con el número del mes
+                            onPress={() => onMonthToggle(monthNumber)}
                         >
                             <Text style={[
                                 styles.monthText,
                                 isSelected && styles.monthTextSelected,
-                                // Si no es el mes seleccionado, usamos color de texto normal
                                 !isSelected && { color: Colors.text }
                             ]}>
                                 {monthName}
@@ -92,10 +71,11 @@ export default function MonthYearSelector({ initialMonth, initialYear, onMonthCh
 const styles = StyleSheet.create({
     container: {
         marginBottom: 10,
-        backgroundColor: Colors.card, // Usamos el color de tarjeta para el fondo
+        backgroundColor: Colors.card, 
         borderRadius: 16,
         padding: 15,
-        // Eliminamos la sombra aquí, ya la pone el padre (DashboardScreen.js)
+        elevation: 2, 
+        shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 4, shadowOffset: {width:0, height:2}
     },
     header: {
         flexDirection: 'row',
@@ -107,7 +87,7 @@ const styles = StyleSheet.create({
     yearText: {
         fontSize: 20,
         fontWeight: 'bold',
-        color: Colors.textLight, // Usamos color claro para el año
+        color: Colors.textLight,
     },
     arrowButton: {
         padding: 5,
@@ -118,21 +98,25 @@ const styles = StyleSheet.create({
         justifyContent: 'space-around',
     },
     monthButton: {
-        width: '30%', // Tres columnas
-        aspectRatio: 1.5, // Más ancho que alto
+        width: '30%', 
+        aspectRatio: 1.8, 
         justifyContent: 'center',
         alignItems: 'center',
         borderRadius: 8,
         marginVertical: 5,
+        borderWidth: 1,
+        borderColor: Colors.border, 
     },
     monthButtonSelected: {
-        backgroundColor: Colors.primary, // Color de resaltado
+        backgroundColor: Colors.primary, 
+        borderColor: Colors.primary,
     },
     monthText: {
         fontSize: 14,
-        fontWeight: 'bold',
+        fontWeight: '600',
     },
     monthTextSelected: {
-        color: Colors.textLight,
+        color: '#FFFFFF', 
+        fontWeight: 'bold',
     },
 });

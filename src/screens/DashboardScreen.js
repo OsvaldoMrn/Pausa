@@ -94,9 +94,24 @@ export default function DashboardScreen() {
     const navigation = useNavigation();
     const [weeklyData, setWeeklyData] = useState([]);
     const [periodMetrics, setPeriodMetrics] = useState(null);
-    const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+
+    // ESTADO NUEVO: Array de meses seleccionados (por defecto el actual)
+    const [selectedMonths, setSelectedMonths] = useState([new Date().getMonth() + 1]);
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
+    // --- LÓGICA DE TOGGLE ---
+    const handleMonthToggle = (monthNumber) => {
+        setSelectedMonths(prev => {
+            if (prev.includes(monthNumber)) {
+                // Si ya está, lo quitamos (filtro)
+                return prev.filter(m => m !== monthNumber);
+            } else {
+                // Si no está, lo agregamos
+                // Ordenamos (.sort) para que el array siempre sea [1, 5, 12] y no [5, 1, 12]
+                return [...prev, monthNumber].sort((a, b) => a - b);
+            }
+        });
+    };
 
     // Función de carga y procesamiento de la data semanal (Últimos 7 días)
     const loadWeeklyData = useCallback(async () => {
@@ -142,21 +157,54 @@ export default function DashboardScreen() {
         setWeeklyData(data);
     }, []);
 
+    // --- loadPeriodMetrics: VERSIÓN AGREGADA (LA MAGIA) ---
     const loadPeriodMetrics = useCallback(async () => {
-        // 1. Calcular el rango de un mes completo
-        const year = selectedYear;
-        const month = selectedMonth;
+        if (selectedMonths.length === 0) {
+            setPeriodMetrics(null);
+            return;
+        }
 
-        // Inicio del mes (00:00:00 del día 1)
-        const startDate = new Date(year, month - 1, 1).getTime();
+        // Mapa temporal para fusionar resultados: { "Ira": { count: 10, intensitySum: 85 } }
+        const aggregationMap = new Map();
 
-        // Final del mes (23:59:59 del último día del mes)
-        const endDate = new Date(year, month, 0, 23, 59, 59, 999).getTime();
+        // 1. ITERAR SOBRE CADA MES SELECCIONADO
+        for (const month of selectedMonths) {
+            const year = selectedYear;
+            // Inicio del mes
+            const startDate = new Date(year, month - 1, 1).getTime();
+            // Fin del mes
+            const endDate = new Date(year, month, 0, 23, 59, 59, 999).getTime();
 
-        const frequencyData = getEmotionFrequency(startDate, endDate);
-        const metrics = processFrequencyData(frequencyData);
+            // Consultar BD para ESTE mes
+            const monthData = getEmotionFrequency(startDate, endDate);
+
+            // 2. FUSIONAR EN EL MAPA
+            monthData.forEach(item => {
+                if (!aggregationMap.has(item.emotion)) {
+                    aggregationMap.set(item.emotion, { count: 0, intensitySum: 0 });
+                }
+                const current = aggregationMap.get(item.emotion);
+                current.count += item.count;
+                // Para promediar correctamente después, sumamos (promedio * cantidad)
+                current.intensitySum += (item.avg_intensity * item.count);
+            });
+        }
+
+        // 3. RECONSTRUIR EL ARRAY FINAL
+        const aggregatedData = Array.from(aggregationMap.entries()).map(([emotion, data]) => ({
+            emotion: emotion,
+            count: data.count,
+            // Recuperamos el promedio total: suma total de intensidades / conteo total
+            avg_intensity: data.intensitySum / data.count
+        }));
+
+        // 4. ORDENAR POR FRECUENCIA (DESC) para que processFrequencyData funcione bien
+        aggregatedData.sort((a, b) => b.count - a.count);
+
+        const metrics = processFrequencyData(aggregatedData);
         setPeriodMetrics(metrics);
-    }, [selectedMonth, selectedYear]);
+
+    }, [selectedMonths, selectedYear]);
 
     // Se carga la data al montar la pantalla y cada vez que vuelve al foco
     useFocusEffect(
@@ -169,6 +217,14 @@ export default function DashboardScreen() {
     // Handler para navegar a EntryDetailScreen
     const handleSegmentPress = (dateString) => {
         navigation.navigate('EntryDetail', { date: dateString });
+    };
+
+    // Helper para mostrar título de meses seleccionados
+    const getSelectedMonthsLabel = () => {
+        if (selectedMonths.length === 0) return "Ningún mes seleccionado";
+        if (selectedMonths.length === 12) return "Todo el Año";
+        // Mapea los números a nombres cortos (Ene, Feb...)
+        return selectedMonths.map(m => MONTHS_ES[m - 1].substring(0, 3)).join(", ");
     };
 
     return (
@@ -230,47 +286,48 @@ export default function DashboardScreen() {
 
                 <View style={styles.card}>
 
-                    {/* 1. SELECTOR DE RANGO (NUEVO COMPONENTE) */}
+                    {/* SELECTOR MÚLTIPLE */}
                     <MonthYearSelector
-                        initialMonth={selectedMonth}
-                        initialYear={selectedYear}
-                        onMonthChange={setSelectedMonth}
+                        selectedMonths={selectedMonths} // Pasamos el array
+                        selectedYear={selectedYear}
+                        onMonthToggle={handleMonthToggle} // Pasamos el toggle
                         onYearChange={setSelectedYear}
                     />
 
-                    {/* 2. MÉTRICAS NARRATIVAS */}
+                    {/* MÉTRICAS */}
                     {periodMetrics && periodMetrics.totalEntries > 0 ? (
                         <View>
-                            {/* Total de Entradas (Texto actualizado con MONTHS_ES) */}
                             <Text style={styles.metricTitle}>
-                                Total de Entradas en {MONTHS_ES[selectedMonth - 1]} de {selectedYear}:
-                                <Text style={styles.metricValue}> {periodMetrics.totalEntries}</Text>
+                                Análisis de: {getSelectedMonthsLabel()} del {selectedYear}
                             </Text>
+                            <Text style={[styles.metricTitle, { fontSize: 14, marginTop: 5 }]}>
+                                Total Entradas: <Text style={styles.metricValue}>{periodMetrics.totalEntries}</Text>
+                            </Text>
+
                             <View style={styles.divider} />
 
-                            {/* Top 3 Frecuencia */}
-                            <Text style={styles.metricSubtitle}>Tus 3 Emociones Más Frecuentes:</Text>
+                            {/* Top 3 */}
+                            <Text style={styles.metricSubtitle}>Emociones Más Frecuentes:</Text>
                             {periodMetrics.top3Frequency.map((item, index) => (
                                 <View key={index} style={styles.topMetricRow}>
                                     <Text style={styles.topMetricRank}>{index + 1}.</Text>
                                     <View style={[styles.colorChip, { backgroundColor: item.color }]} />
                                     <Text style={styles.topMetricText}>{item.emotion}</Text>
-                                    <Text style={styles.topMetricCount}>({item.count} veces)</Text>
+                                    <Text style={styles.topMetricCount}>({item.count})</Text>
                                 </View>
                             ))}
                             <View style={styles.divider} />
 
-                            {/* Máxima Intensidad Promedio */}
+                            {/* Intensidad */}
                             {periodMetrics.highestAvgIntensity ? (
                                 <View>
-                                    <Text style={styles.metricSubtitle}>Pico Emocional Promedio (Mínimo 3 registros):</Text>
+                                    <Text style={styles.metricSubtitle}>Pico Emocional Promedio (Mínimo 3):</Text>
                                     <View style={styles.maxIntensityRow}>
                                         <Text style={styles.maxIntensityText}>
                                             <Text style={[styles.maxIntensityEmotion, { color: periodMetrics.highestAvgIntensity.color }]}>
-                                                {/* Espacios añadidos para evitar el error visual */}
                                                 {" "}{periodMetrics.highestAvgIntensity.emotion}{" "}
                                             </Text>
-                                            alcanza una intensidad de
+                                            intensidad de
                                             <Text style={styles.maxIntensityValue}>
                                                 {" "}{periodMetrics.highestAvgIntensity.intensity}/10
                                             </Text>
@@ -279,19 +336,19 @@ export default function DashboardScreen() {
                                 </View>
                             ) : (
                                 <Text style={styles.placeholderText}>
-                                    Aún no hay suficientes datos (mínimo 3) para identificar un pico emocional.
+                                    Faltan datos para identificar pico emocional.
                                 </Text>
                             )}
                         </View>
                     ) : (
-                        // Mensaje si no hay data para el mes seleccionado
                         <Text style={styles.placeholderText}>
-                            No hay entradas registradas en {MONTHS_ES[selectedMonth - 1]} de {selectedYear}.
+                            {selectedMonths.length === 0
+                                ? "Selecciona al menos un mes arriba."
+                                : `No hay registros en los meses seleccionados de ${selectedYear}.`}
                         </Text>
                     )}
                     <View style={{ height: 20 }} />
 
-                    {/* ESPACIO PARA EL GRÁFICO DE BARRAS */}
                     <Text style={styles.placeholderText}>Aquí irá el gráfico de barras</Text>
                 </View>
             </ScrollView>
