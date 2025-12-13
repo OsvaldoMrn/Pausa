@@ -125,6 +125,81 @@ export const getAllEntries = () => {
   }
 };
 
+
+// src/db/database.js
+
+// ... (después de getAllEntries)
+
+/**
+ * Obtiene la frecuencia (conteo) de emociones dentro de un rango de fechas.
+ * @param {number} startDateMs - Fecha de inicio en milisegundos.
+ * @param {number} endDateMs - Fecha de fin en milisegundos.
+ * @returns {Array} Lista de {emotion, count, avg_intensity}
+ */
+export const getEmotionFrequency = (startDateMs, endDateMs) => {
+  try {
+    const results = db.getAllSync(`
+      SELECT 
+        emotion, 
+        COUNT(id) as count,
+        AVG(intensity) as avg_intensity
+      FROM entries 
+      WHERE date >= ? AND date <= ?
+      GROUP BY emotion
+      ORDER BY count DESC
+    `, [startDateMs, endDateMs]);
+
+    return results;
+
+  } catch (error) {
+    console.error('Error al obtener frecuencia de emociones:', error);
+    return [];
+  }
+};
+
+
+export const getDayOfWeekPatterns = () => {
+  try {
+    const results = db.getAllSync(`
+      SELECT 
+        CAST(strftime('%w', date / 1000, 'unixepoch', 'localtime') AS INTEGER) AS day_of_week,
+        emotion,
+        COUNT(emotion) as count,
+        AVG(intensity) as avg_intensity
+      FROM entries
+      GROUP BY day_of_week, emotion
+      ORDER BY day_of_week ASC, count DESC
+    `);
+    
+    // Necesitamos que el código de arriba nos dé: 
+    // day_of_week | emotion | count | avg_intensity
+    // ---------------------------------------------
+    // 1           | Ira     | 5     | 8.5
+    // 1           | Feliz   | 2     | 6.0
+    // 2           | Triste  | 7     | 9.1
+    
+    // Ahora procesaremos ese resultado en JavaScript para dejarlo limpio:
+    const patterns = new Map();
+    results.forEach(row => {
+      const day = row.day_of_week;
+      if (!patterns.has(day)) {
+        patterns.set(day, []);
+      }
+      patterns.get(day).push({
+        emotion: row.emotion,
+        count: row.count,
+        avg_intensity: row.avg_intensity,
+      });
+    });
+
+    return Object.fromEntries(patterns); // Lo devolvemos como un objeto {1: [...], 2: [...], ...}
+
+  } catch (error) {
+    console.error('Error al obtener patrones semanales:', error);
+    return {};
+  }
+};
+
 // ================================================================
 // OPERACIONES EN LA TABLA `tags`
 // ================================================================
