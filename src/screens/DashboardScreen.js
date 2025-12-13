@@ -276,7 +276,7 @@ export default function DashboardScreen() {
                 <Text style={styles.sectionHeader}>Patrones por Día de la Semana</Text>
                 <View style={styles.card}>
                     <Text style={styles.placeholderText}>
-                        Aquí irá la lógica de "Los Lunes sientes más estrés..."
+                        Proximamente
                     </Text>
                     <View style={{ height: 80 }} />
                 </View>
@@ -349,7 +349,7 @@ export default function DashboardScreen() {
                     )}
                     <View style={{ height: 20 }} />
 
-                    <Text style={styles.placeholderText}>Aquí irá el gráfico de barras</Text>
+                    <Text style={styles.placeholderText}>Proximamente</Text>
                 </View>
             </ScrollView>
         </SafeAreaWrapper>
