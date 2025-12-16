@@ -7,6 +7,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { getEntriesForDay, getEmotionFrequency } from '../db/database';
 import { getEmotionColor } from '../utils/emotionUtils';
 import MonthYearSelector from '../components/MonthYearSelector';
+import EmotionBarChart from '../components/EmotionBarChart';
 
 const MONTHS_ES = [
     'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -55,6 +56,7 @@ const processFrequencyData = (data) => {
             totalEntries: 0,
             top3Frequency: [],
             highestAvgIntensity: null,
+            barChartData: []
         }
     }
 
@@ -67,6 +69,14 @@ const processFrequencyData = (data) => {
         count: item.count,
         color: getEmotionColor(item.emotion),
     }))
+
+    // datos para el gráfico de barras
+    const barChartData = data.slice(3, 8)
+        .filter(item => item.count > 0)
+        .map(item => ({
+            ...item,
+            color: getEmotionColor(item.emotion)
+        }));
 
     //3. emocion de maxima intensidad promedio
     let maxIntensityEmotion = null;
@@ -86,6 +96,7 @@ const processFrequencyData = (data) => {
     return {
         totalEntries,
         top3Frequency,
+        barChartData,
         highestAvgIntensity: maxIntensityEmotion,
     }
 }
@@ -348,8 +359,10 @@ export default function DashboardScreen() {
                         </Text>
                     )}
                     <View style={{ height: 20 }} />
-
-                    <Text style={styles.placeholderText}>Proximamente</Text>
+                    {/* GRÁFICO DE BARRAS INTELIGENTE */}
+                    {periodMetrics && (
+                        <EmotionBarChart data={periodMetrics.barChartData} />
+                    )}
                 </View>
             </ScrollView>
         </SafeAreaWrapper>
