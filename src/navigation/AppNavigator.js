@@ -4,7 +4,9 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import MainTabNavigator from './MainTabNavigator';
 
-import EntryDetailScreen from '../screens/EntryDetailScreen'
+import EntryDetailScreen from '../screens/EntryDetailScreen';
+
+import TagDetailScreen from '../screens/TagDetailScreen'
 
 const Stack = createNativeStackNavigator();
 
@@ -16,6 +18,8 @@ export default function AppNavigator() {
         <Stack.Screen name="MainTabs" component={MainTabNavigator}/>
 
         <Stack.Screen name="EntryDetail" component={EntryDetailScreen} />
+
+        <Stack.Screen name="TagDetail" component={TagDetailScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

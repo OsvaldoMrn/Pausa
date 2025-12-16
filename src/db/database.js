@@ -1,5 +1,6 @@
 // src/db/database.js
 import * as SQLite from 'expo-sqlite';
+import { extractTags } from '../utils/tagUtils';
 
 // Abrimos la base de datos (sincrónicamente)
 const db = SQLite.openDatabaseSync('pausa.db');
@@ -39,11 +40,52 @@ export const initDatabase = () => {
           PRIMARY KEY (entry_id, tag_id)
         );
       `);
+
+      db.execSync(`
+        CREATE TABLE IF NOT EXISTS blocked_tags (
+          word TEXT PRIMARY KEY
+        );
+      `);
     });
 
-    console.log('Base de datos inicializada correctamente.');
+    console.log('Base de datos inicializada correctamente (bl).');
   } catch (error) {
     console.error('Error al inicializar la base de datos:', error);
+  }
+};
+
+
+// Función para desterrar una palabra
+export const blockTag = (tagName) => {
+  try {
+    db.runSync(`INSERT OR IGNORE INTO blocked_tags (word) VALUES (?)`, [tagName.toLowerCase()]);
+    console.log(`Tag bloqueado: ${tagName}`);
+    return true;
+  } catch (error) {
+    console.error('Error al bloquear tag:', error);
+    return false;
+  }
+};
+
+// Función para perdonar/desbloquear un tag
+export const unblockTag = (tagName) => {
+  try {
+    db.runSync(`DELETE FROM blocked_tags WHERE word = ?`, [tagName.toLowerCase()]);
+    console.log(`Tag desbloqueado: ${tagName}`);
+    return true;
+  } catch (error) {
+    console.error('Error al desbloquear tag:', error);
+    return false;
+  }
+};
+
+// Helper interno para obtener la lista negra rápida
+const getBlockedTagsSet = () => {
+  try {
+    const rows = db.getAllSync(`SELECT word FROM blocked_tags`);
+    return new Set(rows.map(r => r.word));
+  } catch (error) {
+    return new Set();
   }
 };
 
@@ -52,7 +94,7 @@ export const initDatabase = () => {
 // ================================================================
 
 /**
- * Añade una nueva entrada emocional
+ * Añade una nueva entrada emocional y procesa sus tags automáticos.
  */
 export const addEntry = (emotion, intensity, note, date) => {
   try {
@@ -60,16 +102,31 @@ export const addEntry = (emotion, intensity, note, date) => {
       `INSERT INTO entries (emotion, intensity, note, date) VALUES (?, ?, ?, ?)`,
       [emotion, intensity || null, note || null, date]
     );
-    console.log('Entrada añadida con ID:', result.lastInsertRowId);
-    return result.lastInsertRowId;
+    const entryId = result.lastInsertRowId;
+
+    if (note) {
+      // 1. Obtenemos lista negra
+      const blockedSet = getBlockedTagsSet();
+      // 2. Extraemos tags
+      const extractedTags = extractTags(note);
+
+      extractedTags.forEach(tagName => {
+        // 3. SOLO procesamos si NO está bloqueada
+        if (!blockedSet.has(tagName)) {
+          const tagId = addTag(tagName);
+          if (tagId) addTagToEntry(entryId, tagId);
+        }
+      });
+    }
+    return entryId;
   } catch (error) {
-    console.error('Error al añadir entrada:', error);
+    console.error('Error addEntry:', error);
     return null;
   }
 };
 
 /**
- * Actualiza una entrada existente
+ * Actualiza una entrada existente y regenera sus tags.
  */
 export const updateEntry = (id, emotion, intensity, note, date) => {
   try {
@@ -77,10 +134,24 @@ export const updateEntry = (id, emotion, intensity, note, date) => {
       `UPDATE entries SET emotion = ?, intensity = ?, note = ?, date = ? WHERE id = ?`,
       [emotion, intensity || null, note || null, date, id]
     );
-    console.log('Entrada actualizada:', id);
+
+    // Borramos tags viejos de esta entrada
+    db.runSync(`DELETE FROM entry_tags WHERE entry_id = ?`, [id]);
+
+    if (note) {
+      const blockedSet = getBlockedTagsSet(); // <--- Check Blacklist
+      const extractedTags = extractTags(note);
+
+      extractedTags.forEach(tagName => {
+        if (!blockedSet.has(tagName)) {
+          const tagId = addTag(tagName);
+          if (tagId) addTagToEntry(id, tagId);
+        }
+      });
+    }
     return true;
   } catch (error) {
-    console.error('Error al actualizar entrada:', error);
+    console.error('Error updateEntry:', error);
     return false;
   }
 };
@@ -170,14 +241,14 @@ export const getDayOfWeekPatterns = () => {
       GROUP BY day_of_week, emotion
       ORDER BY day_of_week ASC, count DESC
     `);
-    
+
     // Necesitamos que el código de arriba nos dé: 
     // day_of_week | emotion | count | avg_intensity
     // ---------------------------------------------
     // 1           | Ira     | 5     | 8.5
     // 1           | Feliz   | 2     | 6.0
     // 2           | Triste  | 7     | 9.1
-    
+
     // Ahora procesaremos ese resultado en JavaScript para dejarlo limpio:
     const patterns = new Map();
     results.forEach(row => {
@@ -239,21 +310,37 @@ export const getAllTags = () => {
 };
 
 /**
- * Borra un tag (solo si no está usado)
+ * Obtiene todos los tags con el conteo de cuántas veces se han usado.
+ * Retorna: [{ id, name, count }, ...]
+ */
+export const getTagsWithCounts = () => {
+  try {
+    const tags = db.getAllSync(`
+      SELECT t.id, t.name, COUNT(et.entry_id) as count 
+      FROM tags t 
+      LEFT JOIN entry_tags et ON t.id = et.tag_id 
+      GROUP BY t.id 
+      ORDER BY t.name ASC
+    `);
+    return tags;
+  } catch (error) {
+    console.error('Error al obtener tags con conteo:', error);
+    return [];
+  }
+};
+
+/**
+ * Borra un tag y sus asociaciones (Versión Simplificada y Robusta)
  */
 export const deleteTag = (id) => {
   try {
-    // Verificamos si está en uso
-    const inUse = db.getFirstSync(
-      `SELECT 1 FROM entry_tags WHERE tag_id = ? LIMIT 1`,
-      [id]
-    );
-    if (inUse) {
-      console.warn('No se puede borrar: el tag está en uso.');
-      return false;
-    }
+    // 1. Borrar asociaciones primero
+    db.runSync(`DELETE FROM entry_tags WHERE tag_id = ?`, [id]);
 
+    // 2. Borrar el tag después
     db.runSync(`DELETE FROM tags WHERE id = ?`, [id]);
+
+    console.log('Tag eliminado:', id);
     return true;
   } catch (error) {
     console.error('Error al borrar tag:', error);
@@ -348,10 +435,10 @@ export const getEntryByDateString = (dateString) => {
     // 1. Usamos la MISMA lógica "segura" que en 'handleSave'
     // para crear la fecha en HORA LOCAL
     const [year, month, day] = dateString.split('-').map(Number);
-    
+
     // 2. Definimos el inicio del día (00:00:00 local)
     const startOfDay = new Date(year, month - 1, day, 0, 0, 0, 0).getTime();
-    
+
     // 3. Definimos el fin del día (23:59:59 local)
     const endOfDay = new Date(year, month - 1, day, 23, 59, 59, 999).getTime();
 
@@ -360,7 +447,7 @@ export const getEntryByDateString = (dateString) => {
       `SELECT * FROM entries WHERE date >= ? AND date <= ? LIMIT 1`,
       [startOfDay, endOfDay]
     );
-    
+
     return entry || null;
 
   } catch (error) {
@@ -372,10 +459,10 @@ export const getEntryByDateString = (dateString) => {
 export const getEntriesForDay = (dateString) => {
   try {
     const [year, month, day] = dateString.split('-').map(Number);
-    
+
     // Inicio del día (00:00:00)
     const startOfDay = new Date(year, month - 1, day, 0, 0, 0, 0).getTime();
-    
+
     // Fin del día (23:59:59)
     const endOfDay = new Date(year, month - 1, day, 23, 59, 59, 999).getTime();
 
@@ -384,7 +471,7 @@ export const getEntriesForDay = (dateString) => {
       `SELECT * FROM entries WHERE date >= ? AND date <= ? ORDER BY date ASC`,
       [startOfDay, endOfDay]
     );
-    
+
     return entries;
 
   } catch (error) {
@@ -411,5 +498,60 @@ export const resetDatabase = () => {
     initDatabase(); // Volvemos a crear las tablas
   } catch (error) {
     console.error('Error al resetear:', error);
+  }
+};
+
+/**
+ * MANTENIMIENTO: Borra TODOS los tags existentes y regenera desde cero.
+ * ¡CUIDADO! Esto elimina también los tags creados manualmente.
+ */
+export const regenerateAllTags = () => {
+  try {
+    console.log('Regenerando tags (con blacklist)...');
+    const entries = db.getAllSync(`SELECT id, note FROM entries WHERE note IS NOT NULL AND note != ''`);
+
+    // Obtenemos la lista negra UNA sola vez
+    const blockedSet = getBlockedTagsSet();
+
+    db.withTransactionSync(() => {
+      // Limpieza total
+      db.execSync(`DELETE FROM entry_tags`);
+      db.execSync(`DELETE FROM tags`);
+      db.execSync(`DELETE FROM sqlite_sequence WHERE name='tags'`);
+
+      let count = 0;
+      entries.forEach(entry => {
+        const extractedTags = extractTags(entry.note);
+        extractedTags.forEach(tagName => {
+          // EL FILTRO MAESTRO: Si está bloqueada, la ignoramos.
+          if (!blockedSet.has(tagName)) {
+            const tagId = addTag(tagName);
+            if (tagId) addTagToEntry(entry.id, tagId);
+          }
+        });
+        count++;
+      });
+      console.log(`Tags regenerados para ${count} entradas.`);
+    });
+    return true;
+  } catch (error) {
+    console.error('Error regenerar:', error);
+    return false;
+  }
+};
+
+export const getEntriesByTag = (tagId) => {
+  try {
+    const entries = db.getAllSync(`
+      SELECT e.* FROM entries e
+      JOIN entry_tags et ON e.id = et.entry_id
+      WHERE et.tag_id = ?
+      ORDER BY e.date DESC
+    `, [tagId]);
+
+    return entries;
+  } catch (error) {
+    console.error('Error al obtener entradas por tag:', error);
+    return [];
   }
 };
