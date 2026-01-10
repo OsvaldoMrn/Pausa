@@ -46,6 +46,16 @@ export const initDatabase = () => {
           word TEXT PRIMARY KEY
         );
       `);
+
+      // TABLA DE NOTIFICACIONES
+      db.execSync(`
+        CREATE TABLE IF NOT EXISTS notifications (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          time_ms INTEGER NOT NULL,  -- Guardamos la hora en milisegundos (timestamp)
+          enabled INTEGER DEFAULT 1, -- 1 = Prendido, 0 = Apagado
+          notification_id TEXT       -- El ID que nos devuelve Expo/Android
+        );
+      `);
     });
 
     console.log('Base de datos inicializada correctamente (bl).');
@@ -553,5 +563,78 @@ export const getEntriesByTag = (tagId) => {
   } catch (error) {
     console.error('Error al obtener entradas por tag:', error);
     return [];
+  }
+};
+
+// ========================
+// PDF
+// =======================
+/**
+ * Obtiene todas las entradas dentro de un rango de fechas (inclusive).
+ * Útil para exportar reportes.
+ * @param {number} startDateMs - Timestamp de inicio (00:00:00)
+ * @param {number} endDateMs - Timestamp de fin (23:59:59)
+ */
+export const getEntriesByDateRange = (startDateMs, endDateMs) => {
+  try {
+    const entries = db.getAllSync(`
+      SELECT * FROM entries 
+      WHERE date >= ? AND date <= ?
+      ORDER BY date ASC
+    `, [startDateMs, endDateMs]);
+
+    return entries;
+  } catch (error) {
+    console.error('Error al obtener rango de fechas:', error);
+    return [];
+  }
+};
+
+
+// ================================================================
+// OPERACIONES DE NOTIFICACIONES
+// ================================================================
+
+export const getNotifications = () => {
+  try {
+    return db.getAllSync(`SELECT * FROM notifications ORDER BY time_ms ASC`);
+  } catch (error) {
+    return [];
+  }
+};
+
+export const addNotificationDB = (timeMs, notificationId) => {
+  try {
+    const result = db.runSync(
+      `INSERT INTO notifications (time_ms, enabled, notification_id) VALUES (?, 1, ?)`,
+      [timeMs, notificationId]
+    );
+    return result.lastInsertRowId;
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+};
+
+export const updateNotificationStatus = (id, enabled, newNotificationId) => {
+  try {
+    db.runSync(
+      `UPDATE notifications SET enabled = ?, notification_id = ? WHERE id = ?`,
+      [enabled ? 1 : 0, newNotificationId, id]
+    );
+    return true;
+  } catch (error) {
+    console.error(error);
+    return false;
+  }
+};
+
+export const deleteNotificationDB = (id) => {
+  try {
+    db.runSync(`DELETE FROM notifications WHERE id = ?`, [id]);
+    return true;
+  } catch (error) {
+    console.error(error);
+    return false;
   }
 };
