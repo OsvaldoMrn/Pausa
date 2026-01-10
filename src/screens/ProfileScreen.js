@@ -43,7 +43,7 @@ export default function ProfileScreen() {
             title="Exportar a PDF" 
             subtitle="Genera un reporte en formato PDF"
             color={Colors.accent}
-            onPress={() => alert('Próximamente')} // Aquí conectaremos el PDF luego
+            onPress={() => navigation.navigate('Export')} // Aquí conectaremos el PDF luego
           />
         </View>
 

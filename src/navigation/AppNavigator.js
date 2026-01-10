@@ -9,6 +9,7 @@ import EntryDetailScreen from '../screens/EntryDetailScreen';
 import TagDetailScreen from '../screens/TagDetailScreen'
 
 import NotificationsScreen from '../screens/NotificationsScreen'
+import ExportScreen from '../screens/ExportScreen'
 import { Colors } from '../constants/Colors';
 
 const Stack = createNativeStackNavigator();
@@ -28,6 +29,17 @@ export default function AppNavigator() {
           name="Notifications"
           component={NotificationsScreen}
           options={{ title: 'Recordatorios', headerShown: true, headerTintColor: Colors.primary, headerStyle: { backgroundColor: Colors.background } }}
+        />
+        <Stack.Screen
+          name="Export"
+          component={ExportScreen}
+          options={{
+            title: 'Generar Reporte',
+            headerShown: true,
+            headerTintColor: Colors.primary,
+            headerStyle: { backgroundColor: Colors.background },
+            headerShadowVisible: false
+          }}
         />
       </Stack.Navigator>
     </NavigationContainer>
