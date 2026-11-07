@@ -206,6 +206,23 @@ export const getAllEntries = () => {
   }
 };
 
+export const getHistoricalEntriesByWeekday = (weekday) => {
+  try {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    return db.getAllSync(`
+      SELECT * FROM entries
+      WHERE date < ?
+        AND CAST(strftime('%w', date / 1000, 'unixepoch', 'localtime') AS INTEGER) = ?
+      ORDER BY date DESC
+    `, [startOfToday.getTime(), weekday]);
+  } catch (error) {
+    console.error('Error al obtener patrones históricos:', error);
+    return [];
+  }
+};
+
 export const getBackupSnapshot = () => {
   try {
     const entries = getEntriesWithTags().map(entry => ({

@@ -1,20 +1,14 @@
 import * as Notifications from 'expo-notifications';
 
-const CHANNEL_ID = 'pausa-reminders';
-
 export const requestNotificationPermission = async () => {
-  await Notifications.setNotificationChannelAsync(CHANNEL_ID, {
-    name: 'Recordatorios de Pausa',
-    importance: Notifications.AndroidImportance.DEFAULT,
-    vibrationPattern: [0, 250, 250, 250],
-    sound: 'default',
-  });
-
   const currentPermissions = await Notifications.getPermissionsAsync();
-  if (currentPermissions.status === 'granted') return true;
+  const permissions = currentPermissions.status === 'granted'
+    ? currentPermissions
+    : await Notifications.requestPermissionsAsync();
 
-  const requestedPermissions = await Notifications.requestPermissionsAsync();
-  return requestedPermissions.status === 'granted';
+  if (permissions.status !== 'granted') return false;
+
+  return true;
 };
 
 export const scheduleDailyReminder = async (timeMinutes, previousNotificationId = null) => {
@@ -28,14 +22,13 @@ export const scheduleDailyReminder = async (timeMinutes, previousNotificationId 
   return Notifications.scheduleNotificationAsync({
     content: {
       title: 'Pausa',
-      body: 'Tómate un momento para registrar cómo te sientes.',
+      body: '¿Cómo ha estado tu día?',
       sound: 'default',
     },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.DAILY,
       hour: Math.floor(timeMinutes / 60),
       minute: timeMinutes % 60,
-      channelId: CHANNEL_ID,
     },
   });
 };

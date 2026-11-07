@@ -1,34 +1,34 @@
 {
   "expo": {
     "name": "Pausa",
-    "slug": "Pausa",
+    "slug": "pausa",
     "version": "2.0.0",
     "orientation": "portrait",
     "icon": "./assets/logopausa.png",
     "userInterfaceStyle": "dark",
-    "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/logopausa.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#121212"
-    },
     "ios": {
       "supportsTablet": true
     },
     "android": {
       "package": "com.github.OsvaldoMrn.Pausa",
-      "versionCode": 3,
+      "versionCode": 4,
       "adaptiveIcon": {
         "foregroundImage": "./assets/logopausa.png",
         "backgroundColor": "#121212"
-      },
-      "edgeToEdgeEnabled": true
+      }
     },
     "web": {
       "favicon": "./assets/logopausa.png"
     },
     "plugins": [
-      "expo-sqlite",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/logopausa.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#121212"
+        }
+      ],
       "expo-notifications"
     ],
     "extra": {

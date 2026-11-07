@@ -30,3 +30,17 @@ emotionTree.forEach(abuelo => {
 export const getEmotionColor = (emotionName) => {
   return colorMap.get(emotionName);
 };
+
+export const getEmotionCategory = (emotionName) => {
+  for (const root of emotionTree) {
+    if (root.name === emotionName) return root.name;
+
+    for (const parent of root.children) {
+      if (parent.name === emotionName || parent.children.some(child => child.name === emotionName)) {
+        return root.name;
+      }
+    }
+  }
+
+  return null;
+};

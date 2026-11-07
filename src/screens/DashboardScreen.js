@@ -1,11 +1,12 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
 import SafeAreaWrapper from '../components/SafeAreaWrapper';
 import { Colors } from '../constants/Colors';
 import WeeklyDonutChart from '../components/WeeklyDonutChart';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import { getEntriesForDay, getEmotionFrequency } from '../db/database';
+import { getEntriesForDay, getEmotionFrequency, getHistoricalEntriesByWeekday } from '../db/database';
 import { getEmotionColor } from '../utils/emotionUtils';
+import { buildWeekdayPattern } from '../utils/weekdayPatternUtils';
 import MonthYearSelector from '../components/MonthYearSelector';
 import EmotionBarChart from '../components/EmotionBarChart';
 
@@ -41,6 +42,23 @@ const getDominantEmotion = (entries) => {
 };
 
 const DAYS_ES_ORDER = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
+const DAYS_ES_FULL = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+
+const getWeekSelectorDays = () => {
+    const today = new Date();
+    const diffToMonday = today.getDay() === 0 ? 6 : today.getDay() - 1;
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - diffToMonday);
+
+    return Array.from({ length: 7 }, (_, index) => {
+        const date = new Date(monday);
+        date.setDate(monday.getDate() + index);
+        return {
+            weekday: date.getDay(),
+            label: DAYS_ES_ORDER[index],
+        };
+    });
+};
 /**
  * Convierte el índice de día de JS (0=Dom, 1=Lun) a nuestro índice de visualización (0=Lun, 6=Dom).
  */
@@ -105,10 +123,23 @@ export default function DashboardScreen() {
     const navigation = useNavigation();
     const [weeklyData, setWeeklyData] = useState([]);
     const [periodMetrics, setPeriodMetrics] = useState(null);
+    const [weekdayPatternRange, setWeekdayPatternRange] = useState('recent');
+    const [weekdayPattern, setWeekdayPattern] = useState(null);
+    const [selectedWeekday, setSelectedWeekday] = useState(() => new Date().getDay());
 
     // ESTADO NUEVO: Array de meses seleccionados (por defecto el actual)
     const [selectedMonths, setSelectedMonths] = useState([new Date().getMonth() + 1]);
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+
+    const loadWeekdayPattern = useCallback(() => {
+        const entries = getHistoricalEntriesByWeekday(selectedWeekday);
+        const limit = weekdayPatternRange === 'recent' ? 8 : Infinity;
+        setWeekdayPattern(buildWeekdayPattern(entries, limit));
+    }, [selectedWeekday, weekdayPatternRange]);
+
+    useEffect(() => {
+        loadWeekdayPattern();
+    }, [loadWeekdayPattern]);
 
     // --- LÓGICA DE TOGGLE ---
     const handleMonthToggle = (monthNumber) => {
@@ -222,7 +253,8 @@ export default function DashboardScreen() {
         useCallback(() => {
             loadWeeklyData();
             loadPeriodMetrics();
-        }, [loadWeeklyData, loadPeriodMetrics])
+            loadWeekdayPattern();
+        }, [loadWeeklyData, loadPeriodMetrics, loadWeekdayPattern])
     );
 
     // Handler para navegar a EntryDetailScreen
@@ -283,13 +315,73 @@ export default function DashboardScreen() {
                     </Text>
                 </View>
 
-                {/* --- SECCIÓN 2: PATRONES NARRATIVOS (Placeholder) --- */}
+                {/* --- SECCIÓN 2: PATRONES POR DÍA --- */}
                 <Text style={styles.sectionHeader}>Patrones por Día de la Semana</Text>
                 <View style={styles.card}>
-                    <Text style={styles.placeholderText}>
-                        Proximamente
-                    </Text>
-                    <View style={{ height: 80 }} />
+                    <View style={styles.weekdaySelector}>
+                        {getWeekSelectorDays().map(day => (
+                            <TouchableOpacity
+                                key={day.weekday}
+                                onPress={() => setSelectedWeekday(day.weekday)}
+                                style={[
+                                    styles.weekdayButton,
+                                    selectedWeekday === day.weekday && styles.weekdayButtonActive,
+                                ]}
+                            >
+                                <Text style={[
+                                    styles.weekdayButtonText,
+                                    selectedWeekday === day.weekday && styles.weekdayButtonTextActive,
+                                ]}>
+                                    {day.label}
+                                </Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+
+                    <View style={styles.patternRangeContainer}>
+                        {[
+                            { key: 'recent', label: 'Últimos 8' },
+                            { key: 'all', label: 'Todo el tiempo' },
+                        ].map(option => (
+                            <TouchableOpacity
+                                key={option.key}
+                                onPress={() => setWeekdayPatternRange(option.key)}
+                                style={[
+                                    styles.patternRangeButton,
+                                    weekdayPatternRange === option.key && styles.patternRangeButtonActive,
+                                ]}
+                            >
+                                <Text style={[
+                                    styles.patternRangeText,
+                                    weekdayPatternRange === option.key && styles.patternRangeTextActive,
+                                ]}>
+                                    {option.label}
+                                </Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+
+                    {weekdayPattern && !weekdayPattern.hasEnoughData ? (
+                        <Text style={styles.placeholderText}>
+                            Todavía no hay suficientes {DAYS_ES_FULL[selectedWeekday]} registrados para encontrar un patrón.
+                        </Text>
+                    ) : weekdayPattern?.winner?.isClear ? (
+                        <View style={styles.patternResult}>
+                            <View style={[styles.patternColor, { backgroundColor: weekdayPattern.winner.color }]} />
+                            <Text style={styles.patternText}>
+                                Tus {DAYS_ES_FULL[selectedWeekday]} suelen inclinarse hacia{' '}
+                                <Text style={styles.patternCategory}>{weekdayPattern.winner.category}</Text>:
+                                {' '}apareció en {weekdayPattern.winner.count} de {weekdayPattern.daysAnalyzed} días analizados.
+                            </Text>
+                        </View>
+                    ) : (
+                        <Text style={styles.placeholderText}>
+                            Tus {DAYS_ES_FULL[selectedWeekday]} han sido variados.{' '}
+                            {weekdayPattern?.winner
+                                ? `${weekdayPattern.winner.category} fue la categoría más frecuente, con ${weekdayPattern.winner.count} de ${weekdayPattern.daysAnalyzed} días, pero sin una diferencia clara.`
+                                : 'No hay una categoría claramente dominante.'}
+                        </Text>
+                    )}
                 </View>
 
                 {/* --- SECCIÓN 3: RESUMEN DINÁMICO --- */}
@@ -449,6 +541,76 @@ const styles = StyleSheet.create({
     dailyButtonText: {
         color: Colors.textLight,
         fontSize: 12,
+        fontWeight: 'bold',
+    },
+    weekdaySelector: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginBottom: 15,
+    },
+    weekdayButton: {
+        flex: 1,
+        alignItems: 'center',
+        paddingVertical: 9,
+        marginHorizontal: 2,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: Colors.border,
+    },
+    weekdayButtonActive: {
+        backgroundColor: Colors.primary,
+        borderColor: Colors.primary,
+    },
+    weekdayButtonText: {
+        color: Colors.textSecondary,
+        fontSize: 11,
+        fontWeight: '600',
+    },
+    weekdayButtonTextActive: {
+        color: Colors.textDark,
+    },
+    patternRangeContainer: {
+        flexDirection: 'row',
+        backgroundColor: Colors.inputBg,
+        borderRadius: 10,
+        padding: 3,
+        marginBottom: 15,
+    },
+    patternRangeButton: {
+        flex: 1,
+        alignItems: 'center',
+        paddingVertical: 9,
+        borderRadius: 8,
+    },
+    patternRangeButtonActive: {
+        backgroundColor: Colors.primary,
+    },
+    patternRangeText: {
+        color: Colors.textSecondary,
+        fontSize: 12,
+        fontWeight: '600',
+    },
+    patternRangeTextActive: {
+        color: Colors.textDark,
+    },
+    patternResult: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    patternColor: {
+        width: 10,
+        height: 42,
+        borderRadius: 5,
+        marginRight: 12,
+    },
+    patternText: {
+        flex: 1,
+        color: Colors.textSecondary,
+        fontSize: 14,
+        lineHeight: 21,
+    },
+    patternCategory: {
+        color: Colors.text,
         fontWeight: 'bold',
     },
     divider: {

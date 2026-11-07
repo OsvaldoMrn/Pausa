@@ -2,8 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import * as FileSystem from 'expo-file-system';
-import * as DocumentPicker from 'expo-document-picker';
+import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import SafeAreaWrapper from '../components/SafeAreaWrapper';
 import { Colors } from '../constants/Colors';
@@ -11,7 +10,7 @@ import { getBackupSnapshot, replaceDatabaseFromBackup, saveDailyReminder } from 
 import { buildBackupPayload, parseAndValidateBackup, serializeBackup } from '../utils/backupUtils';
 import { scheduleDailyReminder } from '../utils/notificationUtils';
 
-const APP_VERSION = '1.2.0';
+const APP_VERSION = '2.0.0';
 
 export default function ProfileScreen() {
   const navigation = useNavigation();
@@ -23,12 +22,10 @@ export default function ProfileScreen() {
       const snapshot = getBackupSnapshot();
       const backup = buildBackupPayload(snapshot, APP_VERSION);
       const datePart = new Date().toISOString().slice(0, 10);
-      const fileUri = `${FileSystem.cacheDirectory}pausa-backup-${datePart}.json`;
+      const file = new File(Paths.cache, `pausa-backup-${datePart}.json`);
 
-      await FileSystem.writeAsStringAsync(fileUri, serializeBackup(backup), {
-        encoding: FileSystem.EncodingType.UTF8,
-      });
-      await Sharing.shareAsync(fileUri, {
+      await file.write(serializeBackup(backup));
+      await Sharing.shareAsync(file.uri, {
         mimeType: 'application/json',
         dialogTitle: 'Guardar respaldo de Pausa',
       });
@@ -53,14 +50,13 @@ export default function ProfileScreen() {
   const handleImportBackup = async () => {
     setIsProcessingBackup(true);
     try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: 'application/json',
-        copyToCacheDirectory: true,
+      const result = await File.pickFileAsync({
+        mimeTypes: ['application/json'],
       });
 
       if (result.canceled) return;
 
-      const content = await FileSystem.readAsStringAsync(result.assets[0].uri);
+      const content = await result.result.text();
       const backup = parseAndValidateBackup(content);
       const confirmed = await confirmImport();
       if (!confirmed) return;
