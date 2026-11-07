@@ -7,10 +7,8 @@ import { Colors } from '../constants/Colors';
 import { getEntriesByTag } from '../db/database';
 import { getEmotionColor } from '../utils/emotionUtils';
 
-// Helper para formato de fecha
 const formatDate = (timestamp) => {
     const date = new Date(timestamp);
-    // Formato: "Lunes, 15 de Octubre"
     return date.toLocaleDateString('es-ES', { 
         weekday: 'long', 
         day: 'numeric', 
@@ -18,7 +16,6 @@ const formatDate = (timestamp) => {
     });
 };
 
-// Helper para formato YYYY-MM-DD (necesario para navegar a EntryDetail)
 const getDateString = (timestamp) => {
     const d = new Date(timestamp);
     const year = d.getFullYear();
@@ -30,7 +27,7 @@ const getDateString = (timestamp) => {
 export default function TagDetailScreen() {
     const route = useRoute();
     const navigation = useNavigation();
-    const { tagId, tagName } = route.params; // Recibimos el ID y Nombre del tag
+    const { tagId, tagName } = route.params; 
     
     const [entries, setEntries] = useState([]);
 
@@ -50,7 +47,6 @@ export default function TagDetailScreen() {
         return (
             <TouchableOpacity onPress={() => handleEntryPress(item.date)}>
                 <View style={styles.cardItem}>
-                    {/* Indicador de Color (Emoción) */}
                     <View style={[styles.colorIndicator, { backgroundColor: color }]} />
                     
                     <View style={styles.cardContent}>
@@ -59,7 +55,6 @@ export default function TagDetailScreen() {
                             <Text style={styles.emotionBadge}>{item.emotion}</Text>
                         </View>
                         
-                        {/* Snippet de la nota */}
                         <Text style={styles.noteText} numberOfLines={2}>
                             {item.note}
                         </Text>
@@ -74,7 +69,6 @@ export default function TagDetailScreen() {
     return (
         <SafeAreaWrapper>
             <View style={styles.container}>
-                {/* Header */}
                 <View style={styles.header}>
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                         <Ionicons name="arrow-back" size={24} color={Colors.text} />
@@ -85,12 +79,10 @@ export default function TagDetailScreen() {
                     <View style={{width: 40}} /> 
                 </View>
 
-                {/* Subtítulo estadístico */}
                 <Text style={styles.subtitle}>
                     Mencionado en {entries.length} {entries.length === 1 ? 'entrada' : 'entradas'}
                 </Text>
 
-                {/* Lista de Entradas */}
                 <FlatList
                     data={entries}
                     renderItem={renderItem}
@@ -109,7 +101,6 @@ export default function TagDetailScreen() {
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: Colors.background },
     
-    // Header
     header: { 
         flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', 
         paddingHorizontal: 20, paddingTop: 10, marginBottom: 10 
@@ -127,10 +118,8 @@ const styles = StyleSheet.create({
         marginBottom: 20,
     },
 
-    // Lista
     listContent: { paddingHorizontal: 20, paddingBottom: 40 },
     
-    // Tarjeta (Diseño consistente con Calendar)
     cardItem: {
         flexDirection: 'row', alignItems: 'center',
         backgroundColor: Colors.card, borderRadius: 12,

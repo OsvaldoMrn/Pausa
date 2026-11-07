@@ -9,7 +9,6 @@ import SafeAreaWrapper from '../components/SafeAreaWrapper';
 import { Colors } from '../constants/Colors';
 import { getTagsWithCounts, deleteTag, addTag, regenerateAllTags, blockTag, unblockTag } from '../db/database';
 
-// 🎚️ CONFIGURACIÓN
 const MIN_RELEVANCE = 3;
 const CLOUD_SIZE = 5;
 
@@ -20,14 +19,11 @@ export default function TagsScreen() {
   const [visibleTags, setVisibleTags] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // --- 1. CARGA DE DATOS ---
   const loadTags = useCallback(() => {
-    // Pequeño hack: setTimeout para dar tiempo a la BD de actualizarse si venimos de un borrado rápido
     setTimeout(() => {
       const data = getTagsWithCounts();
       setAllTags(data);
 
-      // Filtro de Relevancia + Ordenamiento
       const relevant = data.filter(t => t.count >= MIN_RELEVANCE);
       const sorted = relevant.sort((a, b) => b.count - a.count);
 
@@ -41,14 +37,12 @@ export default function TagsScreen() {
     }, [loadTags])
   );
 
-  // --- 2. BÚSQUEDA ---
   const handleSearch = (text) => {
     setSearchQuery(text);
     if (text) {
       const filtered = allTags.filter(t =>
         t.name.toLowerCase().includes(text.toLowerCase())
       );
-      // Al buscar mostramos todo ordenado alfabéticamente
       setVisibleTags(filtered.sort((a, b) => a.name.localeCompare(b.name)));
     } else {
       const relevant = allTags.filter(t => t.count >= MIN_RELEVANCE);
@@ -56,29 +50,23 @@ export default function TagsScreen() {
     }
   };
 
-  // --- 3. CREACIÓN MANUAL ---
   const handleCreateTag = () => {
     if (!searchQuery.trim()) return;
 
-    // 1. Normalizar a minúsculas (para que coincida con el motor automático)
     const normalizedName = searchQuery.trim().toLowerCase();
 
-    // 2. Verificar duplicados visuales
     const exists = allTags.some(t => t.name === normalizedName);
     if (exists) {
       Alert.alert('Ya existe', 'Esa etiqueta ya está en tu lista.');
       return;
     }
 
-    // 3. ¡EL PERDÓN! Si estaba bloqueada, la desbloqueamos
     unblockTag(normalizedName);
 
-    // 4. Crear el tag
     const newId = addTag(normalizedName);
 
     if (newId) {
       setSearchQuery('');
-      // Opcional: Preguntar si quiere regenerar el historial de una vez
       Alert.alert(
         "Etiqueta Creada",
         `Se ha añadido "${normalizedName}". ¿Quieres buscarla en tus notas pasadas?`,
@@ -98,7 +86,6 @@ export default function TagsScreen() {
     }
   };
 
-  // --- 4. GESTIÓN (Borrar / Bloquear) ---
   const handleManageTag = (tag) => {
     Alert.alert(
       `Gestionar "${tag.name}"`,
@@ -106,16 +93,16 @@ export default function TagsScreen() {
       [
         { text: 'Cancelar', style: 'cancel' },
         {
-          text: 'Bloquear para siempre', // Opción Nuclear ☢️
+          text: 'Bloquear para siempre',
           style: 'destructive',
           onPress: () => {
-            blockTag(tag.name); // 1. Agregamos a lista negra
-            deleteTag(tag.id);  // 2. Borramos la actual
-            loadTags();         // 3. Recargamos la pantalla
+            blockTag(tag.name);
+            deleteTag(tag.id);
+            loadTags();
           },
         },
         {
-          text: 'Solo borrar esta vez', // Opción Suave 🧹
+          text: 'Solo borrar esta vez',
           onPress: () => {
             deleteTag(tag.id);
             loadTags();
@@ -125,7 +112,6 @@ export default function TagsScreen() {
     );
   };
 
-  // --- 5. NAVEGACIÓN A DETALLE ---
   const handleTagPress = (tag) => {
     navigation.navigate('TagDetail', {
       tagId: tag.id,
@@ -133,7 +119,6 @@ export default function TagsScreen() {
     });
   };
 
-  // --- 6. MANTENIMIENTO ---
   const handleRegenerate = () => {
     Alert.alert(
       "Analizar historial",
@@ -154,7 +139,6 @@ export default function TagsScreen() {
     );
   };
 
-  // --- RENDERIZADO: NUBE (Con 'X') ---
   const renderTagCloud = () => {
     const topTags = visibleTags.slice(0, CLOUD_SIZE);
 
@@ -166,14 +150,12 @@ export default function TagsScreen() {
         <View style={styles.cloudWrapper}>
           {topTags.map((tag) => (
             <View key={tag.id} style={[styles.cloudChip, { backgroundColor: Colors.primary + '25' }]}>
-              {/* Parte del texto (Click para ver detalle) */}
               <TouchableOpacity onPress={() => handleTagPress(tag)} style={styles.cloudTextContainer}>
                 <Text style={styles.cloudText}>
                   {tag.name} <Text style={styles.countText}>({tag.count})</Text>
                 </Text>
               </TouchableOpacity>
 
-              {/* Parte de la 'X' (Click para gestionar/borrar) */}
               <TouchableOpacity onPress={() => handleManageTag(tag)} style={styles.cloudCloseBtn}>
                 <Ionicons name="close" size={14} color={Colors.textSecondary} />
               </TouchableOpacity>
@@ -184,7 +166,6 @@ export default function TagsScreen() {
     );
   };
 
-  // --- RENDERIZADO: LISTA ---
   const renderListItem = ({ item }) => (
     <View style={styles.listItem}>
       <TouchableOpacity style={styles.tagInfo} onPress={() => handleTagPress(item)}>
@@ -202,7 +183,7 @@ export default function TagsScreen() {
   const listData = searchQuery ? visibleTags : visibleTags.slice(CLOUD_SIZE);
 
   return (
-    <SafeAreaWrapper>
+    <SafeAreaWrapper edges={['top', 'left', 'right']}>
       <View style={styles.container}>
         <Text style={styles.title}>Mis Etiquetas</Text>
 
@@ -228,7 +209,11 @@ export default function TagsScreen() {
           </Text>
         )}
 
-        <ScrollView contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
           {!searchQuery && renderTagCloud()}
 
           <Text style={styles.sectionTitle}>
@@ -268,6 +253,8 @@ export default function TagsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20 },
+  scrollView: { flex: 1 },
+  scrollContent: { flexGrow: 1, paddingBottom: 40 },
   title: { fontSize: 28, fontWeight: 'bold', color: Colors.text, textAlign: 'center', marginBottom: 20 },
 
   searchContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.card, borderRadius: 12, paddingHorizontal: 15, height: 50, marginBottom: 10 },

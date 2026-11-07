@@ -1,4 +1,3 @@
-// src/screens/CalendarScreen.js
 import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
 import { Calendar } from 'react-native-calendars';
@@ -10,7 +9,6 @@ import { getEmotionColor } from '../utils/emotionUtils.js';
 import { Ionicons } from '@expo/vector-icons';
 
 
-// ... (getLocalDateString y getWeekDays se quedan IGUAL, no los borres)
 const getLocalDateString = (dateMs) => {
   const date = new Date(dateMs);
   const year = date.getFullYear();
@@ -53,29 +51,21 @@ export default function CalendarScreen() {
 
   useEffect(() => {
     const loadData = () => {
-      // 1. Obtenemos TODAS las entradas (vienen ordenadas por fecha DESC: la más reciente primero)
       const entries = getAllEntries();
 
       const newMarkedDates = {};
-      // 2. El mapa ahora guardará un ARRAY de entradas, no una sola
       const entriesMap = new Map();
 
       entries.forEach(entry => {
         const dateStr = getLocalDateString(entry.date);
 
-        // --- LÓGICA DE AGRUPACIÓN ---
         if (!entriesMap.has(dateStr)) {
           entriesMap.set(dateStr, []);
         }
-        // Añadimos la entrada al array de ese día
         entriesMap.get(dateStr).push(entry);
       });
 
-      // --- LÓGICA DE CALENDARIO (Solo color de la última) ---
-      // Iteramos sobre los días que tienen datos
       entriesMap.forEach((dayEntries, dateStr) => {
-        // Como getAllEntries devuelve DESC (más reciente primero),
-        // la entrada [0] es la ÚLTIMA que registró el usuario.
         const latestEntry = dayEntries[0];
         const color = getEmotionColor(latestEntry.emotion);
 
@@ -90,10 +80,8 @@ export default function CalendarScreen() {
       }
       setMarkedDates(newMarkedDates);
 
-      // --- LÓGICA DE PLAYLIST ---
       const weekDays = getWeekDays(focusedWeekDate);
       const newCurrentWeek = weekDays.map(day => {
-        // Obtenemos EL ARRAY de entradas para ese día (o array vacío)
         const dayEntries = entriesMap.get(day.id) || [];
         return {
           ...day,
@@ -114,7 +102,6 @@ export default function CalendarScreen() {
     navigation.navigate('EntryDetail', { date: day.dateString });
   };
 
-  // ... (handlePrevWeek y handleNextWeek siguen igual) ...
   const handlePrevWeek = () => {
     setFocusedWeekDate(prevDate => {
       const newDate = new Date(prevDate);
@@ -131,19 +118,16 @@ export default function CalendarScreen() {
     });
   };
 
-  // 3. RENDER ITEM ACTUALIZADO
   const renderDayItem = ({ item }) => {
     const dayEntries = item.entries;
     const hasEntries = dayEntries && dayEntries.length > 0;
     const latestEntry = hasEntries ? dayEntries[0] : null;
-    // Solo usamos el color como una pequeña barra lateral o indicador, no todo el fondo
     const indicatorColor = latestEntry ? getEmotionColor(latestEntry.emotion) : Colors.border;
     const emotionText = hasEntries ? dayEntries.map(e => e.emotion).reverse().join(', ') : 'Sin registro';
 
     return (
       <TouchableOpacity onPress={() => navigation.navigate('EntryDetail', { date: item.id })}>
         <View style={styles.cardItem}>
-          {/* Indicador de color a la izquierda */}
           <View style={[styles.colorIndicator, { backgroundColor: indicatorColor }]} />
 
           <View style={styles.cardContent}>
@@ -153,7 +137,6 @@ export default function CalendarScreen() {
             </Text>
           </View>
 
-          {/* Flechita sutil */}
           <Ionicons name="chevron-forward" size={20} color={Colors.textMuted} />
         </View>
       </TouchableOpacity>
@@ -161,7 +144,7 @@ export default function CalendarScreen() {
   };
 
   return (
-    <SafeAreaWrapper>
+    <SafeAreaWrapper edges={['top', 'left', 'right']}>
       <View style={styles.container}>
         <Text style={styles.title}>Pausa</Text>
 
@@ -213,7 +196,6 @@ export default function CalendarScreen() {
   );
 }
 
-// 4. ESTILOS (Sin cambios importantes, solo numberOfLines en el Text maneja el desborde)
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   title: { fontSize: 28, fontWeight: 'bold', color: Colors.primary, textAlign: 'center', paddingVertical: 20 },

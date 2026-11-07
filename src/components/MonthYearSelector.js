@@ -1,4 +1,3 @@
-// src/components/MonthYearSelector.js
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,10 +10,7 @@ const MONTHS_ES = [
     'Oct', 'Nov', 'Dic'
 ];
 
-// AHORA RECIBE UN ARRAY DE MESES Y ONMONTHTOGGLE
 export default function MonthYearSelector({ selectedMonths = [], selectedYear, onMonthToggle, onYearChange }) {
-    
-    // Handler para cambiar el año
     const handleYearChange = (offset) => {
         const newYear = selectedYear + offset;
         onYearChange(newYear);
@@ -22,7 +18,6 @@ export default function MonthYearSelector({ selectedMonths = [], selectedYear, o
     
     return (
         <View style={styles.container}>
-            {/* 1. HEADER (Año y Flechas) */}
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => handleYearChange(-1)} style={styles.arrowButton}>
                     <Ionicons name="chevron-back" size={24} color={Colors.primary} />
@@ -35,11 +30,9 @@ export default function MonthYearSelector({ selectedMonths = [], selectedYear, o
                 </TouchableOpacity>
             </View>
 
-            {/* 2. CUERPO (Tabla 3x4 de Meses) */}
             <View style={styles.grid}>
                 {MONTHS_ES.map((monthName, index) => {
-                    const monthNumber = index + 1; // 1 para Enero, etc.
-                    // Verificamos si este mes está en el array de seleccionados
+                    const monthNumber = index + 1;
                     const isSelected = selectedMonths.includes(monthNumber);
                     
                     return (
@@ -50,7 +43,6 @@ export default function MonthYearSelector({ selectedMonths = [], selectedYear, o
                                 isSelected && styles.monthButtonSelected,
                                 !isSelected && { backgroundColor: Colors.card } 
                             ]}
-                            // Al presionar, llamamos al toggle con el número del mes
                             onPress={() => onMonthToggle(monthNumber)}
                         >
                             <Text style={[

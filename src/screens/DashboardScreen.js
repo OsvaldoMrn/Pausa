@@ -15,7 +15,6 @@ const MONTHS_ES = [
     'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
 ];
 
-// Helper para obtener el string de fecha YYYY-MM-DD
 const getDateString = (date) => {
     const d = new Date(date);
     const year = d.getFullYear();
@@ -24,8 +23,6 @@ const getDateString = (date) => {
     return `${year}-${month}-${day}`;
 };
 
-// Helper para obtener la emoción dominante del día
-// Usamos la emoción con la intensidad MÁS ALTA como dominante
 const getDominantEmotion = (entries) => {
     if (!entries || entries.length === 0) return null;
 
@@ -59,12 +56,7 @@ const getWeekSelectorDays = () => {
         };
     });
 };
-/**
- * Convierte el índice de día de JS (0=Dom, 1=Lun) a nuestro índice de visualización (0=Lun, 6=Dom).
- */
 const getDisplayIndex = (jsDayIndex) => {
-    // Si es Domingo (0), su índice de visualización es 6.
-    // Si no es Domingo, su índice de visualización es el de JS - 1.
     return jsDayIndex === 0 ? 6 : jsDayIndex - 1;
 };
 
@@ -78,17 +70,14 @@ const processFrequencyData = (data) => {
         }
     }
 
-    //1. Total de entradas
     const totalEntries = data.reduce((sum, item) => sum + item.count, 0)
 
-    //2. top 3 frecuencia (que ya viene ordenada desde la query)
     const top3Frequency = data.slice(0, 3).map(item => ({
         emotion: item.emotion,
         count: item.count,
         color: getEmotionColor(item.emotion),
     }))
 
-    // datos para el gráfico de barras
     const barChartData = data.slice(3, 8)
         .filter(item => item.count > 0)
         .map(item => ({
@@ -96,7 +85,6 @@ const processFrequencyData = (data) => {
             color: getEmotionColor(item.emotion)
         }));
 
-    //3. emocion de maxima intensidad promedio
     let maxIntensityEmotion = null;
     let maxIntensity = -1;
 
@@ -127,7 +115,6 @@ export default function DashboardScreen() {
     const [weekdayPattern, setWeekdayPattern] = useState(null);
     const [selectedWeekday, setSelectedWeekday] = useState(() => new Date().getDay());
 
-    // ESTADO NUEVO: Array de meses seleccionados (por defecto el actual)
     const [selectedMonths, setSelectedMonths] = useState([new Date().getMonth() + 1]);
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
@@ -141,44 +128,33 @@ export default function DashboardScreen() {
         loadWeekdayPattern();
     }, [loadWeekdayPattern]);
 
-    // --- LÓGICA DE TOGGLE ---
     const handleMonthToggle = (monthNumber) => {
         setSelectedMonths(prev => {
             if (prev.includes(monthNumber)) {
-                // Si ya está, lo quitamos (filtro)
                 return prev.filter(m => m !== monthNumber);
             } else {
-                // Si no está, lo agregamos
-                // Ordenamos (.sort) para que el array siempre sea [1, 5, 12] y no [5, 1, 12]
                 return [...prev, monthNumber].sort((a, b) => a - b);
             }
         });
     };
 
-    // Función de carga y procesamiento de la data semanal (Últimos 7 días)
     const loadWeeklyData = useCallback(async () => {
         const today = new Date();
         const data = [];
 
-        // --- 1. ENCONTRAR EL LUNES DE ESTA SEMANA ---
-        // El día de la semana de JS es 0 (Dom) a 6 (Sáb).
-        // Queremos el Lunes (día JS 1). Si hoy es Domingo (0), queremos retroceder 6 días.
-        // Si hoy es Martes (2), queremos retroceder 1 día.
-        const dayOfWeek = today.getDay(); // 0 (Dom) a 6 (Sáb)
-        // Calculamos cuántos días retroceder para llegar al Lunes (1)
+        const dayOfWeek = today.getDay(); 
         const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
 
         const monday = new Date(today);
-        monday.setDate(today.getDate() - diffToMonday); // Ahora `monday` es el Lunes de esta semana
+        monday.setDate(today.getDate() - diffToMonday); 
 
-        // --- 2. RECOLECTAR LA DATA DE LUNES A DOMINGO ---
         for (let i = 0; i < 7; i++) {
             const date = new Date(monday);
-            date.setDate(monday.getDate() + i); // Lunes + 0, Lunes + 1, etc.
+            date.setDate(monday.getDate() + i); 
 
             const dateString = getDateString(date);
-            const dayOfWeekIndex = date.getDay(); // 0=Dom, 1=Lun, ...
-            const displayIndex = getDisplayIndex(dayOfWeekIndex); // 0=Lun, 1=Mar, ...
+            const dayOfWeekIndex = date.getDay(); 
+            const displayIndex = getDisplayIndex(dayOfWeekIndex); 
 
             const entries = getEntriesForDay(dateString);
             const dominantEmotionName = getDominantEmotion(entries);
@@ -186,7 +162,6 @@ export default function DashboardScreen() {
                 ? getEmotionColor(dominantEmotionName)
                 : Colors.border;
 
-            // Almacenamos la data directamente en el orden Lunes a Domingo (por el loop)
             data.push({
                 dayLabel: DAYS_ES_ORDER[displayIndex],
                 dateString: dateString,
@@ -195,52 +170,40 @@ export default function DashboardScreen() {
             });
         }
 
-        // Ya no necesitamos ordenar, el loop garantiza el orden Lunes -> Domingo
         setWeeklyData(data);
     }, []);
 
-    // --- loadPeriodMetrics: VERSIÓN AGREGADA (LA MAGIA) ---
     const loadPeriodMetrics = useCallback(async () => {
         if (selectedMonths.length === 0) {
             setPeriodMetrics(null);
             return;
         }
 
-        // Mapa temporal para fusionar resultados: { "Ira": { count: 10, intensitySum: 85 } }
         const aggregationMap = new Map();
 
-        // 1. ITERAR SOBRE CADA MES SELECCIONADO
         for (const month of selectedMonths) {
             const year = selectedYear;
-            // Inicio del mes
             const startDate = new Date(year, month - 1, 1).getTime();
-            // Fin del mes
             const endDate = new Date(year, month, 0, 23, 59, 59, 999).getTime();
 
-            // Consultar BD para ESTE mes
             const monthData = getEmotionFrequency(startDate, endDate);
 
-            // 2. FUSIONAR EN EL MAPA
             monthData.forEach(item => {
                 if (!aggregationMap.has(item.emotion)) {
                     aggregationMap.set(item.emotion, { count: 0, intensitySum: 0 });
                 }
                 const current = aggregationMap.get(item.emotion);
                 current.count += item.count;
-                // Para promediar correctamente después, sumamos (promedio * cantidad)
                 current.intensitySum += (item.avg_intensity * item.count);
             });
         }
 
-        // 3. RECONSTRUIR EL ARRAY FINAL
         const aggregatedData = Array.from(aggregationMap.entries()).map(([emotion, data]) => ({
             emotion: emotion,
             count: data.count,
-            // Recuperamos el promedio total: suma total de intensidades / conteo total
             avg_intensity: data.intensitySum / data.count
         }));
 
-        // 4. ORDENAR POR FRECUENCIA (DESC) para que processFrequencyData funcione bien
         aggregatedData.sort((a, b) => b.count - a.count);
 
         const metrics = processFrequencyData(aggregatedData);
@@ -248,7 +211,6 @@ export default function DashboardScreen() {
 
     }, [selectedMonths, selectedYear]);
 
-    // Se carga la data al montar la pantalla y cada vez que vuelve al foco
     useFocusEffect(
         useCallback(() => {
             loadWeeklyData();
@@ -257,21 +219,18 @@ export default function DashboardScreen() {
         }, [loadWeeklyData, loadPeriodMetrics, loadWeekdayPattern])
     );
 
-    // Handler para navegar a EntryDetailScreen
     const handleSegmentPress = (dateString) => {
         navigation.navigate('EntryDetail', { date: dateString });
     };
 
-    // Helper para mostrar título de meses seleccionados
     const getSelectedMonthsLabel = () => {
         if (selectedMonths.length === 0) return "Ningún mes seleccionado";
         if (selectedMonths.length === 12) return "Todo el Año";
-        // Mapea los números a nombres cortos (Ene, Feb...)
         return selectedMonths.map(m => MONTHS_ES[m - 1].substring(0, 3)).join(", ");
     };
 
     return (
-        <SafeAreaWrapper>
+        <SafeAreaWrapper edges={['top', 'left', 'right']}>
             <ScrollView
                 style={styles.container}
                 contentContainerStyle={styles.contentContainer}
@@ -279,7 +238,6 @@ export default function DashboardScreen() {
             >
                 <Text style={styles.title}>Dashboard</Text>
 
-                {/* --- SECCIÓN 1: ROSCA SEMANAL --- */}
                 <View style={styles.card}>
                     <Text style={styles.cardTitle}>Resumen Últimos 7 Días</Text>
 
@@ -293,7 +251,6 @@ export default function DashboardScreen() {
                         <View style={styles.chartPlaceholder}><Text style={styles.placeholderText}>Cargando datos...</Text></View>
                     )}
 
-                    {/* Botones de Navegación por Día */}
                     <View style={styles.dailyNavContainer}>
                         {weeklyData.map((dayData, index) => (
                             <TouchableOpacity
@@ -315,7 +272,6 @@ export default function DashboardScreen() {
                     </Text>
                 </View>
 
-                {/* --- SECCIÓN 2: PATRONES POR DÍA --- */}
                 <Text style={styles.sectionHeader}>Patrones por Día de la Semana</Text>
                 <View style={styles.card}>
                     <View style={styles.weekdaySelector}>
@@ -384,20 +340,17 @@ export default function DashboardScreen() {
                     )}
                 </View>
 
-                {/* --- SECCIÓN 3: RESUMEN DINÁMICO --- */}
                 <Text style={styles.sectionHeader}>Análisis de Período</Text>
 
                 <View style={styles.card}>
 
-                    {/* SELECTOR MÚLTIPLE */}
                     <MonthYearSelector
-                        selectedMonths={selectedMonths} // Pasamos el array
+                        selectedMonths={selectedMonths} 
                         selectedYear={selectedYear}
-                        onMonthToggle={handleMonthToggle} // Pasamos el toggle
+                        onMonthToggle={handleMonthToggle} 
                         onYearChange={setSelectedYear}
                     />
 
-                    {/* MÉTRICAS */}
                     {periodMetrics && periodMetrics.totalEntries > 0 ? (
                         <View>
                             <Text style={styles.metricTitle}>
@@ -409,7 +362,6 @@ export default function DashboardScreen() {
 
                             <View style={styles.divider} />
 
-                            {/* Top 3 */}
                             <Text style={styles.metricSubtitle}>Emociones Más Frecuentes:</Text>
                             {periodMetrics.top3Frequency.map((item, index) => (
                                 <View key={index} style={styles.topMetricRow}>
@@ -421,7 +373,6 @@ export default function DashboardScreen() {
                             ))}
                             <View style={styles.divider} />
 
-                            {/* Intensidad */}
                             {periodMetrics.highestAvgIntensity ? (
                                 <View>
                                     <Text style={styles.metricSubtitle}>Pico Emocional Promedio (Mínimo 3):</Text>
@@ -451,7 +402,6 @@ export default function DashboardScreen() {
                         </Text>
                     )}
                     <View style={{ height: 20 }} />
-                    {/* GRÁFICO DE BARRAS INTELIGENTE */}
                     {periodMetrics && (
                         <EmotionBarChart data={periodMetrics.barChartData} />
                     )}
@@ -478,7 +428,6 @@ const styles = StyleSheet.create({
         marginBottom: 20
     },
 
-    // Estilos de Tarjeta (Reutilizando el look moderno)
     card: {
         backgroundColor: Colors.card,
         borderRadius: 16,
@@ -503,7 +452,6 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
 
-    // Estilos de secciones
     sectionHeader: {
         fontSize: 16,
         fontWeight: 'bold',
@@ -518,7 +466,6 @@ const styles = StyleSheet.create({
         padding: 10,
     },
 
-    // grafico de pastel
     chartPlaceholder: {
         height: 200,
         justifyContent: 'center',
@@ -619,7 +566,6 @@ const styles = StyleSheet.create({
         marginVertical: 15,
     },
 
-    // --- Estilos de Picker (Unificados) ---
     pickerContainer: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -637,7 +583,6 @@ const styles = StyleSheet.create({
         paddingRight: 30,
         backgroundColor: Colors.inputBg,
         marginHorizontal: 5,
-        // CLAVE: Ajustar el FLEX para Android
         flex: 1,
     },
     pickerLabel: {
@@ -646,7 +591,6 @@ const styles = StyleSheet.create({
         marginLeft: 5,
         fontWeight: 'bold',
     },
-    // --- Estilos de Métricas Narrativas ---
     metricTitle: {
         fontSize: 16,
         color: Colors.textSecondary,
@@ -710,6 +654,6 @@ const styles = StyleSheet.create({
     maxIntensityValue: {
         fontWeight: 'bold',
         fontSize: 17,
-        color: Colors.error, // Usamos el color de Error para darle énfasis
+        color: Colors.error, 
     }
 });

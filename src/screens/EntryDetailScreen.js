@@ -1,10 +1,8 @@
-// src/screens/EntryDetailScreen.js
 import React, { useState, useEffect, useRef } from 'react';
 import {
     View, Text, TextInput, Button, StyleSheet, Alert,
     TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform
 } from 'react-native';
-// 1. IMPORTAMOS EL SLIDER
 import Slider from '@react-native-community/slider';
 import { Colors } from '../constants/Colors.js';
 import { addEntry, updateEntry, getEntriesForDay, deleteEntry } from '../db/database.js';
@@ -18,15 +16,12 @@ export default function EntryDetailScreen() {
     const navigation = useNavigation();
     const { date } = route.params;
 
-    // 2. CREAMOS UNA REFERENCIA (la "manija")
     const scrollRef = useRef(null);
 
-    // -- Estados -- 
     const [dayEntries, setDayEntries] = useState([]);
     const [currentIndex, setCurrentIndex] = useState(0);
 
     const [emotion, setEmotion] = useState('');
-    // 2. CAMBIAMOS EL VALOR INICIAL A '0'
     const [intensity, setIntensity] = useState('0');
     const [note, setNote] = useState('');
     const [existingEntry, setExistingEntry] = useState(null);
@@ -49,13 +44,11 @@ export default function EntryDetailScreen() {
         const entry = dayEntries[currentIndex];
 
         if (entry) {
-            // MODO LECTURA
             setEmotion(entry.emotion);
             setIntensity(entry.intensity?.toString() || '5');
             setNote(entry.note || '');
             setIsEditing(false);
         } else {
-            // MODO CREACION
             setEmotion('');
             setIntensity('');
             setNote();
@@ -64,7 +57,6 @@ export default function EntryDetailScreen() {
     }, [currentIndex, dayEntries]);
 
     const handleSave = () => {
-        // 5. VALIDACIÓN MEJORADA
         if (!emotion) return Alert.alert('Falta información', 'Elige una emoción');
         const numericIntensity = parseInt(intensity);
         if (numericIntensity === 0) return Alert.alert('Falta información', 'Elige la intensidad');
@@ -76,10 +68,8 @@ export default function EntryDetailScreen() {
         const currentEntry = dayEntries[currentIndex];
 
         if (currentEntry) {
-            // Editar existente (Opcional, si quieres permitirlo)
             updateEntry(currentEntry.id, emotion, numericIntensity, note, safeDate);
         } else {
-            // Crear nueva
             addEntry(emotion, numericIntensity, note, safeDate);
         }
 
@@ -120,11 +110,9 @@ export default function EntryDetailScreen() {
         ? new Date(currentEntry.date).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
         : new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
 
-    // entrada guardada -> solo lectura
     const isReadOnly = !!currentEntry;
     const isNewPage = currentIndex === dayEntries.length;
 
-    // manejo de flechas
     const goPrev = () => {
         if (currentIndex > 0) setCurrentIndex(currentIndex - 1);
     };
@@ -145,10 +133,7 @@ export default function EntryDetailScreen() {
     )
 
     const handleNoteFocus = () => {
-        // Damos un pequeño retraso (100ms) para
-        // asegurarnos que el teclado ya empezó a subir
         setTimeout(() => {
-            // Le decimos a nuestra "manija": ¡baja hasta el fondo!
             scrollRef.current?.scrollToEnd({ animated: true });
         }, 100);
     };
@@ -158,7 +143,6 @@ export default function EntryDetailScreen() {
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
                 <ScrollView ref={scrollRef} contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
 
-                    {/* Header Moderno */}
                     <View style={styles.header}>
                         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.roundButton}>
                             <Ionicons name="arrow-back" size={24} color={Colors.text} />
@@ -167,7 +151,6 @@ export default function EntryDetailScreen() {
                         <View style={{width: 40}} /> 
                     </View>
 
-                    {/* Navegación Estilo Tarjeta */}
                     <View style={styles.card}>
                         <View style={styles.navRow}>
                             <TouchableOpacity onPress={goPrev} disabled={currentIndex === 0} style={{ opacity: currentIndex === 0 ? 0.3 : 1, padding: 10 }}>
@@ -187,11 +170,9 @@ export default function EntryDetailScreen() {
 
                     <View pointerEvents={canEdit ? "auto" : "none"} style={{ opacity: canEdit ? 1 : 0.6 }}>
                         
-                        {/* Selector de Emoción */}
                         <Text style={styles.sectionLabel}>¿Cómo te sentiste?</Text>
                         <EmotionSelector onEmotionSelected={setEmotion} initialEmotion={emotion} />
 
-                        {/* Slider Nativo */}
                         <View style={styles.card}>
                             <View style={styles.sliderHeader}>
                                 <Text style={styles.cardLabel}>Intensidad</Text>
@@ -211,10 +192,9 @@ export default function EntryDetailScreen() {
                             />
                         </View>
 
-                        {/* Notas */}
                         <Text style={styles.sectionLabel}>Notas</Text>
                         <TextInput
-                            style={styles.noteInput} // Estilo tarjeta
+                            style={styles.noteInput} 
                             value={note}
                             onChangeText={setNote}
                             multiline
@@ -225,7 +205,6 @@ export default function EntryDetailScreen() {
                         />
                     </View>
 
-                    {/* Botones de Acción */}
                     <View style={styles.buttonContainer}>
                         {isNewPage && (
                             <CustomButton title="Guardar Entrada" onPress={handleSave} color={Colors.primary} />
@@ -260,7 +239,6 @@ export default function EntryDetailScreen() {
     );
 }
 
-// ESTILOS ACTUALIZADOS
 const styles = StyleSheet.create({
     container: { flexGrow: 1, padding: 20, paddingBottom: 100 },
     header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 },

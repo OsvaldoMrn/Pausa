@@ -1,38 +1,24 @@
-// src/components/EmotionSelector.js
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
-// NOTA: No necesitamos SafeAreaWrapper aquí, 
-// porque EntryDetailScreen ya lo tiene.
 import { Colors } from '../constants/Colors';
 import { emotionTree } from '../data/emotionMap.js';
 
 const abuelos = emotionTree;
 const BUTTON_HEIGHT = 60;
 
-// Colores base oscuros (para texto blanco)
 const darkBackgroundColors = new Set([
-  '#C763E0', // Morado
-  '#4A90E2', // Azul
-  '#D0021B', // Rojo
+  '#C763E0',
+  '#4A90E2',
+  '#D0021B',
 ]);
 
-// 1. EL COMPONENTE AHORA ACEPTA PROPS
 export default function EmotionSelector({ onEmotionSelected, initialEmotion = "" }) {
-  
-  // 2. LÓGICA DE ESTADO
-  // El estado "activo" (explorando) es interno
   const [activeAbuelo, setActiveAbuelo] = useState(null); 
   const [activePadre, setActivePadre] = useState(null);
-  
-  // El estado "final" (la selección)
-  // ¡NUEVO! Se inicializa con el valor que viene de EntryDetailScreen
   const [selection, setSelection] = useState({ abuelo: null, padre: null, nieto: null });
 
-  // 3. ¡NUEVO! ESTE EFFECTO CARGA LA EMOCIÓN INICIAL (si la hay)
-  // Esto es para cuando CARGAS una entrada ya guardada
   useEffect(() => {
     if (initialEmotion) {
-      // (Esta es una lógica simple, asume que no hay nombres repetidos)
       for (const abuelo of abuelos) {
         if (abuelo.name === initialEmotion) {
           setSelection({ abuelo: abuelo.name, padre: null, nieto: null });
@@ -56,22 +42,20 @@ export default function EmotionSelector({ onEmotionSelected, initialEmotion = ""
       setActiveAbuelo(null);
       setActivePadre(null);
     }
-  }, [initialEmotion]); // Solo se ejecuta 1 vez al cargar
+  }, [initialEmotion]);
 
-
-  // --- Lógica de "Toques" (ACTUALIZADA) ---
   const handleAbueloPress = (abuelo) => {
     if (activeAbuelo === abuelo.name) {
       const finalSelection = { abuelo: abuelo.name, padre: null, nieto: null };
       setSelection(finalSelection);
-      onEmotionSelected(abuelo.name); // 4. LLAMA AL "JEFE"
+      onEmotionSelected(abuelo.name);
       setActiveAbuelo(null);
       setActivePadre(null);
     } else {
       setActiveAbuelo(abuelo.name);
       setActivePadre(null); 
       setSelection({ abuelo: null, padre: null, nieto: null }); 
-      onEmotionSelected(""); // Resetea si solo está explorando
+      onEmotionSelected("");
     }
   };
 
@@ -79,25 +63,23 @@ export default function EmotionSelector({ onEmotionSelected, initialEmotion = ""
     if (activePadre === padre.name) {
       const finalSelection = { abuelo: activeAbuelo, padre: padre.name, nieto: null };
       setSelection(finalSelection);
-      onEmotionSelected(padre.name); // 4. LLAMA AL "JEFE"
+      onEmotionSelected(padre.name);
       setActiveAbuelo(null);
       setActivePadre(null);
     } else {
       setActivePadre(padre.name);
       setSelection({ abuelo: null, padre: null, nieto: null });
-      onEmotionSelected(""); // Resetea
+      onEmotionSelected("");
     }
   };
   
   const handleNietoPress = (nieto) => {
     const finalSelection = { abuelo: activeAbuelo, padre: activePadre, nieto: nieto.name };
     setSelection(finalSelection);
-    onEmotionSelected(nieto.name); // 4. LLAMA AL "JEFE"
+    onEmotionSelected(nieto.name);
     setActiveAbuelo(null);
     setActivePadre(null);
   };
-  // --- Fin de la Lógica ---
-
   const selectedAbuelo = abuelos.find(a => a.name === activeAbuelo);
   const selectedPadre = selectedAbuelo?.children.find(p => p.name === activePadre);
 
@@ -111,7 +93,6 @@ export default function EmotionSelector({ onEmotionSelected, initialEmotion = ""
     return "Toca una emoción para empezar";
   };
 
-  // --- Lógica de Estilo Dinámico (sin cambios) ---
   const hasFinalSelection = !!(selection.nieto || selection.padre || selection.abuelo);
   const finalAbueloObj = hasFinalSelection 
     ? abuelos.find(a => a.name === selection.abuelo) 
@@ -132,13 +113,9 @@ export default function EmotionSelector({ onEmotionSelected, initialEmotion = ""
   } else {
     dynamicTextStyle = styles.selectionTextExploring;
   }
-  // --- Fin Lógica de Estilo ---
-
-  // 5. El JSX ahora es solo el componente, sin el Wrapper
   return (
     <View style={styles.wrapper}> 
       <View style={styles.container}>
-        {/* COLUMNA 1 */}
         <View style={styles.column}>
           {abuelos.map((abuelo) => (
             <Pressable
@@ -154,7 +131,6 @@ export default function EmotionSelector({ onEmotionSelected, initialEmotion = ""
             </Pressable>
           ))}
         </View>
-        {/* COLUMNA 2 */}
         <View style={styles.column}>
           {selectedAbuelo?.children.map((padre) => (
             <Pressable

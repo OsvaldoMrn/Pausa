@@ -2,10 +2,9 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/Colors';
-import { Platform } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
 import SafeAreaWrapper from '../components/SafeAreaWrapper';
 
-// Importamos las 4 pantallas (3 nuevas + Calendario existente)
 import DashboardScreen from '../screens/DashboardScreen';
 import CalendarScreen from '../screens/CalendarScreen';
 import TagsScreen from '../screens/TagsScreen';
@@ -15,15 +14,14 @@ const Tab = createBottomTabNavigator();
 
 export default function MainTabNavigator() {
     return (
-        <SafeAreaWrapper>
+        <SafeAreaWrapper style={styles.tabSafeArea}>
             <Tab.Navigator
-                initialRouteName="Dashboard" // Empezamos en el Dashboard
+                initialRouteName="Dashboard"
                 screenOptions={({ route }) => ({
-                    headerShown: false, // Ocultamos el header superior
+                    headerShown: false,
 
-                    // Estilo de la barra inferior
                     tabBarStyle: {
-                        backgroundColor: Colors.backgroundSecondary, // Fondo oscuro del tab
+                        backgroundColor: Colors.backgroundSecondary,
                         borderTopColor: Colors.border,
                         borderTopWidth: 1,
                         height: Platform.OS === 'ios' ? 85 : 60,
@@ -31,11 +29,9 @@ export default function MainTabNavigator() {
                         paddingTop: 10,
                     },
 
-                    // Colores de iconos/texto
-                    tabBarActiveTintColor: Colors.primary, // Color activo
-                    tabBarInactiveTintColor: Colors.textSecondary, // Gris apagado
+                    tabBarActiveTintColor: Colors.primary,
+                    tabBarInactiveTintColor: Colors.textSecondary,
 
-                    // Configuración de Iconos
                     tabBarIcon: ({ focused, color, size }) => {
                         let iconName;
 
@@ -61,3 +57,9 @@ export default function MainTabNavigator() {
         </SafeAreaWrapper>
     );
 }
+
+const styles = StyleSheet.create({
+    tabSafeArea: {
+        backgroundColor: Colors.backgroundSecondary,
+    },
+});

@@ -3,7 +3,6 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, LayoutAnimation } from 'react-native';
 import { Colors } from '../constants/Colors';
 
-// NOTA: Eliminamos la configuración de UIManager para evitar el Warning en la Nueva Arquitectura.
 // LayoutAnimation debería funcionar automáticamente o degradarse suavemente.
 
 export default function EmotionBarChart({ data }) {

@@ -10,7 +10,6 @@ import { getEntriesByDateRange } from '../db/database';
 import { getEmotionColor } from '../utils/emotionUtils';
 
 export default function ExportScreen() {
-    // Por defecto: Últimos 30 días
     const [endDate, setEndDate] = useState(new Date());
     const [startDate, setStartDate] = useState(new Date(new Date().setDate(new Date().getDate() - 30)));
     
@@ -18,42 +17,34 @@ export default function ExportScreen() {
     const [showEndPicker, setShowEndPicker] = useState(false);
     const [isGenerating, setIsGenerating] = useState(false);
 
-    // --- 1. LÓGICA DE ESTADÍSTICAS REFINADA ---
     const calculateStats = (entries) => {
         if (!entries.length) return null;
 
         const totalEntries = entries.length;
         
-        // A. Promedio Intensidad
         const totalIntensity = entries.reduce((sum, e) => sum + e.intensity, 0);
         const avgIntensity = (totalIntensity / totalEntries).toFixed(1);
 
-        // B. Top 5 Emociones
         const emotionCounts = {};
         entries.forEach(e => {
             emotionCounts[e.emotion] = (emotionCounts[e.emotion] || 0) + 1;
         });
         const sortedEmotions = Object.entries(emotionCounts)
             .sort((a, b) => b[1] - a[1])
-            .slice(0, 5) // ¡Ahora Top 5!
+            .slice(0, 5)
             .map(([name, count]) => `<b>${name}</b> (${count})`)
             .join(' • ');
 
-        // C. Día de Mayor Intensidad (Pico)
-        // Reduce busca el objeto con la propiedad intensity más alta
         const maxIntensityEntry = entries.reduce((prev, current) => 
             (prev.intensity > current.intensity) ? prev : current
         );
         const maxIntensityDate = new Date(maxIntensityEntry.date).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
 
-        // D. Día con Más Registros (Actividad)
-        // 1. Agrupar por fecha "YYYY-MM-DD"
         const daysMap = {};
         entries.forEach(e => {
             const dateKey = new Date(e.date).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
             daysMap[dateKey] = (daysMap[dateKey] || 0) + 1;
         });
-        // 2. Encontrar el ganador
         let busiestDayName = "";
         let busiestDayCount = 0;
         Object.entries(daysMap).forEach(([day, count]) => {
@@ -72,9 +63,7 @@ export default function ExportScreen() {
         };
     };
 
-    // --- 2. GENERADOR DE HTML (LAYOUT MEJORADO) ---
     const generateHTML = (entries, stats, startStr, endStr) => {
-        // Filas de la tabla (Bitácora)
         const tableRows = entries.map(entry => {
             const dateObj = new Date(entry.date);
             const dateStr = dateObj.toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
@@ -101,7 +90,6 @@ export default function ExportScreen() {
             `;
         }).join('');
 
-        // HTML Completo con CSS Grid/Flexbox Vertical
         return `
           <html>
             <head>
@@ -111,7 +99,6 @@ export default function ExportScreen() {
                 h1 { color: ${Colors.primary}; margin-bottom: 5px; }
                 .meta-info { color: #888; font-size: 0.9em; margin-bottom: 30px; border-bottom: 2px solid ${Colors.primary}; padding-bottom: 15px; }
                 
-                /* CONTENEDOR DE RESUMEN */
                 .summary-container { 
                     display: flex; 
                     flex-direction: column; 
@@ -119,7 +106,6 @@ export default function ExportScreen() {
                     margin-bottom: 40px; 
                 }
 
-                /* FILAS DEL RESUMEN */
                 .summary-row { 
                     display: flex; 
                     gap: 15px; 
@@ -132,16 +118,14 @@ export default function ExportScreen() {
                     flex: 1; 
                 }
                 
-                /* ESTILOS ESPECÍFICOS */
-                .card-alert { border-left: 4px solid #ff6b6b; background: #fff5f5; } /* Rojo para intensidad */
-                .card-info { border-left: 4px solid #4ecdc4; background: #f0fbfb; } /* Azul para actividad */
+                .card-alert { border-left: 4px solid #ff6b6b; background: #fff5f5; }
+                .card-info { border-left: 4px solid #4ecdc4; background: #f0fbfb; }
                 
                 .stat-value { font-size: 1.4em; font-weight: bold; color: #333; }
                 .stat-label { font-size: 0.75em; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-top: 5px; }
                 
                 .big-text { font-size: 1.1em; line-height: 1.4; }
 
-                /* TABLA BITÁCORA */
                 h3 { margin-top: 0; color: #555; text-transform: uppercase; font-size: 1em; letter-spacing: 1px; }
                 table { width: 100%; border-collapse: separate; border-spacing: 0 10px; }
                 th { text-align: left; color: #aaa; font-size: 0.8em; font-weight: bold; padding: 0 10px; }
@@ -218,7 +202,6 @@ export default function ExportScreen() {
     const handleGeneratePDF = async () => {
         setIsGenerating(true);
         try {
-            // 1. Obtener datos
             const start = new Date(startDate); start.setHours(0,0,0,0);
             const end = new Date(endDate); end.setHours(23,59,59,999);
 
@@ -230,18 +213,14 @@ export default function ExportScreen() {
                 return;
             }
 
-            // 2. Calcular Estadísticas
             const stats = calculateStats(entries);
             const startStr = start.toLocaleDateString('es-ES');
             const endStr = end.toLocaleDateString('es-ES');
 
-            // 3. Generar HTML
             const html = generateHTML(entries, stats, startStr, endStr);
 
-            // 4. Crear PDF
             const { uri } = await Print.printToFileAsync({ html });
             
-            // 5. Compartir
             await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
 
         } catch (error) {

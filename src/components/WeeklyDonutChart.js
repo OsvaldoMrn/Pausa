@@ -6,8 +6,8 @@ import { Colors } from '../constants/Colors';
 
 const RADIUS = 70;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
-const STROKE_WIDTH = 25; // Grosor del anillo
-const SEGMENT_LENGTH = CIRCUMFERENCE / 7; // Longitud de cada día
+const STROKE_WIDTH = 25;
+const SEGMENT_LENGTH = CIRCUMFERENCE / 7;
 
 const SVG_SIZE = 200; // Tamaño del contenedor
 const CENTER = 100;   // Centro (200 / 2)

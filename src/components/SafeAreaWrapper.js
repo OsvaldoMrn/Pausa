@@ -1,12 +1,11 @@
-// src/components/SafeAreaWrapper.js
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '../constants/Colors.js';
 
-export default function SafeAreaWrapper({ children, style }) {
+export default function SafeAreaWrapper({ children, style, edges = ['top', 'left', 'right', 'bottom'] }) {
   return (
-    <SafeAreaView style={[styles.safeArea, style]} edges={['top', 'left', 'right', 'bottom']}>
+    <SafeAreaView style={[styles.safeArea, style]} edges={edges}>
       <View style={styles.content}>
         {children}
       </View>
@@ -17,10 +16,10 @@ export default function SafeAreaWrapper({ children, style }) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: Colors.backgroundSecondary,
   },
   content: {
     flex: 1,
-    backgroundColor: Colors.background, // asegura fondo continuo
+    backgroundColor: Colors.backgroundSecondary,
   },
 });

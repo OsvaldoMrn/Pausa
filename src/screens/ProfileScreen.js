@@ -103,7 +103,7 @@ export default function ProfileScreen() {
   );
 
   return (
-    <SafeAreaWrapper>
+    <SafeAreaWrapper edges={['top', 'left', 'right']}>
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={styles.headerTitle}>Ajustes</Text>
 
