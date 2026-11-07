@@ -206,6 +206,90 @@ export const getAllEntries = () => {
   }
 };
 
+export const getBackupSnapshot = () => {
+  try {
+    const entries = getEntriesWithTags().map(entry => ({
+      emotion: entry.emotion,
+      intensity: entry.intensity,
+      note: entry.note,
+      dateMs: entry.date,
+      tags: entry.tag_names,
+    }));
+    const tags = db.getAllSync(`SELECT name FROM tags ORDER BY name`).map(tag => tag.name);
+    const blockedTags = db.getAllSync(`SELECT word FROM blocked_tags ORDER BY word`).map(tag => tag.word);
+    const reminder = getDailyReminder();
+
+    return {
+      entries,
+      tags,
+      blockedTags,
+      notificationSettings: reminder
+        ? {
+            timeMinutes: Math.floor(reminder.time_ms / (60 * 1000)),
+            enabled: Boolean(reminder.enabled),
+          }
+        : null,
+    };
+  } catch (error) {
+    console.error('Error al crear instantánea de respaldo:', error);
+    throw error;
+  }
+};
+
+export const replaceDatabaseFromBackup = (backup) => {
+  try {
+    db.withTransactionSync(() => {
+      db.execSync(`
+        DELETE FROM entry_tags;
+        DELETE FROM entries;
+        DELETE FROM tags;
+        DELETE FROM blocked_tags;
+        DELETE FROM notifications;
+      `);
+
+      backup.blockedTags.forEach(word => {
+        db.runSync(`INSERT INTO blocked_tags (word) VALUES (?)`, [word]);
+      });
+
+      const tagNames = new Set(backup.tags);
+      backup.entries.forEach(entry => entry.tags.forEach(tagName => tagNames.add(tagName)));
+
+      const tagIds = new Map();
+      tagNames.forEach(tagName => {
+        const result = db.runSync(`INSERT INTO tags (name) VALUES (?)`, [tagName]);
+        tagIds.set(tagName, result.lastInsertRowId);
+      });
+
+      backup.entries.forEach(entry => {
+        const result = db.runSync(
+          `INSERT INTO entries (emotion, intensity, note, date) VALUES (?, ?, ?, ?)`,
+          [entry.emotion, entry.intensity, entry.note, entry.dateMs]
+        );
+        const entryId = result.lastInsertRowId;
+
+        entry.tags.forEach(tagName => {
+          db.runSync(
+            `INSERT INTO entry_tags (entry_id, tag_id) VALUES (?, ?)`,
+            [entryId, tagIds.get(tagName)]
+          );
+        });
+      });
+
+      if (backup.notificationSettings) {
+        db.runSync(
+          `INSERT INTO notifications (time_ms, enabled, notification_id) VALUES (?, 0, NULL)`,
+          [backup.notificationSettings.timeMinutes * 60 * 1000]
+        );
+      }
+    });
+
+    return true;
+  } catch (error) {
+    console.error('Error al importar respaldo:', error);
+    return false;
+  }
+};
+
 
 // src/db/database.js
 
@@ -600,6 +684,31 @@ export const getNotifications = () => {
     return db.getAllSync(`SELECT * FROM notifications ORDER BY time_ms ASC`);
   } catch (error) {
     return [];
+  }
+};
+
+export const getDailyReminder = () => {
+  try {
+    return db.getFirstSync(`SELECT * FROM notifications ORDER BY id ASC LIMIT 1`) || null;
+  } catch (error) {
+    console.error('Error al obtener recordatorio:', error);
+    return null;
+  }
+};
+
+export const saveDailyReminder = (timeMs, enabled, notificationId) => {
+  try {
+    db.withTransactionSync(() => {
+      db.execSync(`DELETE FROM notifications`);
+      db.runSync(
+        `INSERT INTO notifications (time_ms, enabled, notification_id) VALUES (?, ?, ?)`,
+        [timeMs, enabled ? 1 : 0, notificationId || null]
+      );
+    });
+    return true;
+  } catch (error) {
+    console.error('Error al guardar recordatorio:', error);
+    return false;
   }
 };
 

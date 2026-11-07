@@ -2,7 +2,7 @@
   "expo": {
     "name": "Pausa",
     "slug": "Pausa",
-    "version": "1.1.0",
+    "version": "2.0.0",
     "orientation": "portrait",
     "icon": "./assets/logopausa.png",
     "userInterfaceStyle": "dark",
@@ -28,7 +28,8 @@
       "favicon": "./assets/logopausa.png"
     },
     "plugins": [
-      "expo-sqlite"
+      "expo-sqlite",
+      "expo-notifications"
     ],
     "extra": {
       "eas": {
