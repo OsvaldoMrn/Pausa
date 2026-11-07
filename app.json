@@ -4,7 +4,7 @@
     "slug": "pausa",
     "version": "2.0.0",
     "orientation": "portrait",
-    "icon": "./assets/logopausa.png",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "ios": {
       "supportsTablet": true
@@ -13,18 +13,18 @@
       "package": "com.github.OsvaldoMrn.Pausa",
       "versionCode": 4,
       "adaptiveIcon": {
-        "foregroundImage": "./assets/logopausa.png",
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#121212"
       }
     },
     "web": {
-      "favicon": "./assets/logopausa.png"
+      "favicon": "./assets/favicon.png"
     },
     "plugins": [
       [
         "expo-splash-screen",
         {
-          "image": "./assets/logopausa.png",
+          "image": "./assets/splash-icon.png",
           "resizeMode": "contain",
           "backgroundColor": "#121212"
         }
