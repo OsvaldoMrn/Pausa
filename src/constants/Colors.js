@@ -1,33 +1,27 @@
 export const Colors = {
-  // Paleta principal (Azul Acero - Suave y legible en oscuro)
   primary: '#82A0FA', 
   accent: '#50E3C2',
 
-  // Fondos (Tema Oscuro Profundo)
-  background: '#121212',         // El fondo principal de la pantalla
-  backgroundSecondary: '#1E1E1E', // Para headers o barras de navegación
-  card: '#252525',               // Tarjetas ligeramente más claras para dar profundidad
-  inputBg: '#2C2C2E',            // Inputs que se diferencian sutilmente
+  background: '#121212',         
+  backgroundSecondary: '#1E1E1E', 
+  card: '#252525',               
+  inputBg: '#2C2C2E',            
 
-  // Texto (Adaptado para alto contraste)
-  text: '#E0E0E0',               // Blanco roto (el blanco puro #FFF cansa la vista)
-  textSecondary: '#A0A0A0',      // Gris medio para subtítulos
-  textLight: '#FFFFFF',          // Blanco puro para resaltar
-  textMuted: '#666666',          // Gris oscuro para placeholders
-  textDark: '#121212',           // Para textos sobre fondos claros (si los hubiera)
+  text: '#E0E0E0',               
+  textSecondary: '#A0A0A0',      
+  textLight: '#FFFFFF',          
+  textMuted: '#666666',          
+  textDark: '#121212',           
 
-  // Bordes y sombras
-  border: '#333333',             // Bordes sutiles oscuros
-  shadow: '#000000',             // Sombra negra pura
+  border: '#333333',             
+  shadow: '#000000',             
 
-  // Emociones (Ajustadas para "brillar" en el fondo oscuro)
-  emotionHappy: '#FFD93D',       // Amarillo Sol (más cálido)
-  emotionSad: '#5E81AC',         // Azul Nórdico (menos saturado)
-  emotionAngry: '#FF6B6B',       // Rojo Coral Suave
-  emotionCalm: '#69F0AE',        // Verde Menta Neón
-  emotionAnxious: '#FF9F43',     // Naranja Atardecer
+  emotionHappy: '#FFD93D',       
+  emotionSad: '#5E81AC',         
+  emotionAngry: '#FF6B6B',       
+  emotionCalm: '#69F0AE',        
+  emotionAnxious: '#FF9F43',     
 
-  // UI
-  error: '#FF5252',              // Rojo alerta
-  deleteButton: '#FF4757',       // Rojo carmín para borrar
+  error: '#FF5252',              
+  deleteButton: '#FF4757',       
 };
